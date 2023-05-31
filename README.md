@@ -34,7 +34,7 @@ DRIVER=~fastapi+~httpx
 
 配置机器人帐号列表，每个bot有3个必填配置，在大别野机器人开发者社区申请时获得，
 
-- bot*id: 机器人id，以`bot*`开头
+- bot_id: 机器人id，以`bot_`开头
 - bot_secret: 机器人密钥
 - callback_url: http回调地址，例如申请bot时给的回调地址是`http://域名/your/callback/url`，那么配置里的`callback_url`填写`/your/callback/url`
   如：
