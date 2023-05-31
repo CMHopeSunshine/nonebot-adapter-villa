@@ -1,0 +1,192 @@
+from typing import Type, Union, Iterable
+
+from nonebot.typing import overrides
+from nonebot.utils import escape_tag
+
+from nonebot.adapters import Message as BaseMessage
+from nonebot.adapters import MessageSegment as BaseMessageSegment
+
+from .api import (
+    Link,
+    MentionedAll,
+    MentionedUser,
+    VillaRoomLink,
+    MentionedRobot,
+    MessageContentInfo,
+)
+
+
+class MessageSegment(BaseMessageSegment["Message"]):
+    @classmethod
+    @overrides(BaseMessageSegment)
+    def get_message_class(cls) -> Type["Message"]:
+        return Message
+
+    @overrides(BaseMessageSegment)
+    def __add__(
+        self, other: Union[str, "MessageSegment", Iterable["MessageSegment"]]
+    ) -> "Message":
+        return super().__add__(other)
+
+    @overrides(BaseMessageSegment)
+    def __radd__(
+        self, other: Union[str, "MessageSegment", Iterable["MessageSegment"]]
+    ) -> "Message":
+        return super().__radd__(other)
+
+    @overrides(BaseMessageSegment)
+    def is_text(self) -> bool:
+        return self.type == "text"
+
+    @staticmethod
+    def text(text: str) -> "TextSegment":
+        return TextSegment("text", {"text": text})
+
+    @staticmethod
+    def mention_robot(bot_id: str) -> "MentionRobotSegement":
+        return MentionRobotSegement("mentioned_robot", {"bot_id": bot_id})
+
+    @staticmethod
+    def mention_user(user_id: Union[int, str]) -> "MentionUserSegement":
+        return MentionUserSegement("mentioned_user", {"user_id": user_id})
+
+    @staticmethod
+    def mention_all() -> "MentionAllSegement":
+        return MentionAllSegement("mention_all", {})
+
+    @staticmethod
+    def villa_room_link(
+        villa_id: Union[int, str], room_id: Union[int, str]
+    ) -> "VillaRoomLinkSegment":
+        return VillaRoomLinkSegment(
+            "villa_room_link", {"villa_id": villa_id, "room_id": room_id}
+        )
+
+    @staticmethod
+    def link(url: str) -> "LinkSegment":
+        return LinkSegment("link", {"url": url})
+
+    @staticmethod
+    def quote(message_id: str, message_send_time: int) -> "QuoteSegment":
+        return QuoteSegment(
+            "quote", {"msg_id": message_id, "msg_send_time": message_send_time}
+        )
+
+
+class TextSegment(MessageSegment):
+    @overrides(MessageSegment)
+    def __str__(self) -> str:
+        return escape_tag(self.data["text"])
+
+
+class MentionRobotSegement(MessageSegment):
+    @overrides(MessageSegment)
+    def __str__(self) -> str:
+        return f"@{self.data['bot_id']}"
+
+
+class MentionUserSegement(MessageSegment):
+    @overrides(MessageSegment)
+    def __str__(self) -> str:
+        return f"@{self.data['user_id']}"
+
+
+class MentionAllSegement(MessageSegment):
+    @overrides(MessageSegment)
+    def __str__(self) -> str:
+        return "@全体成员"
+
+
+class VillaRoomLinkSegment(MessageSegment):
+    @overrides(MessageSegment)
+    def __str__(self) -> str:
+        return f"#{self.data['room_id']}-{self.data['villa_id']}]"
+
+
+class LinkSegment(MessageSegment):
+    @overrides(MessageSegment)
+    def __str__(self) -> str:
+        return self.data["url"]
+
+
+class QuoteSegment(MessageSegment):
+    @overrides(MessageSegment)
+    def __str__(self) -> str:
+        return f">{self.data['msg_id']}"
+
+
+class Message(BaseMessage[MessageSegment]):
+    @classmethod
+    @overrides(BaseMessage)
+    def get_segment_class(cls) -> Type[MessageSegment]:
+        return MessageSegment
+
+    @overrides(BaseMessage)
+    def __add__(
+        self, other: Union[str, MessageSegment, Iterable[MessageSegment]]
+    ) -> "Message":
+        return super(Message, self).__add__(
+            MessageSegment.text(other) if isinstance(other, str) else other
+        )
+
+    @overrides(BaseMessage)
+    def __radd__(
+        self, other: Union[str, MessageSegment, Iterable[MessageSegment]]
+    ) -> "Message":
+        return super(Message, self).__radd__(
+            MessageSegment.text(other) if isinstance(other, str) else other
+        )
+
+    @staticmethod
+    @overrides(BaseMessage)
+    def _construct(msg: str) -> Iterable[MessageSegment]:
+        yield MessageSegment.text(msg)
+        # TODO: 找到msg中的http或者https链接，将其转换为LinkSegment
+        # text_begin = 0
+        # for embed in re.finditer(r"https?://[^\s]+", msg):
+        #     if embed.start() > text_begin:
+        #         yield MessageSegment.text(msg[text_begin : embed.start()])
+        #     yield MessageSegment.link(embed.group())
+        #     text_begin = embed.end()
+
+    @classmethod
+    def parse(cls, content: MessageContentInfo) -> "Message":
+        msg = Message()
+        text = content.content.text
+        text_begin = 0
+        for entity in content.content.entities:
+            if isinstance(entity.entity, MentionedRobot):
+                msg.append(MessageSegment.mention_robot(entity.entity.bot_id))
+            elif isinstance(entity.entity, MentionedUser):
+                msg.append(MessageSegment.mention_user(entity.entity.user_id))
+            elif isinstance(entity.entity, MentionedAll):
+                msg.append(MessageSegment.mention_all())
+            elif isinstance(entity.entity, VillaRoomLink):
+                msg.append(
+                    MessageSegment.villa_room_link(
+                        entity.entity.room_id, entity.entity.villa_id
+                    )
+                )
+            elif isinstance(entity.entity, Link):
+                msg.append(MessageSegment.link(entity.entity.url))
+            if text_sengment := text[text_begin : entity.offset]:
+                msg.append(MessageSegment.text(text_sengment))
+            text = text[(entity.offset + entity.length) :]
+        if text:
+            msg.append(MessageSegment.text(text))
+        return msg
+
+    def extract_content(self) -> str:
+        return "".join(
+            str(seg)
+            for seg in self
+            if seg.type
+            in (
+                "text",
+                "mentioned_robot",
+                "mentioned_user",
+                "mention_all",
+                "villa_room_link",
+                "link",
+            )
+        )
