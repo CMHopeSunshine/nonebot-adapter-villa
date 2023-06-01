@@ -18,9 +18,8 @@ from nonebot.adapters import Adapter as BaseAdapter
 from .bot import Bot
 from .utils import log
 from .config import Config
-from .api.models import Payload
 from .event import event_classes
-from .api.handle import API_HANDLERS
+from .api import API_HANDLERS, Payload
 from .exception import ApiNotAvailable
 
 
@@ -89,7 +88,7 @@ class Adapter(BaseAdapter):
                         "INFO",
                         f"Unknown event type: {payload.type} data={payload.extend_data}",
                     )
-                # (Path() / 'test.json').write_text(json.dumps(json_data, indent=4, ensure_ascii=False), encoding='utf-8')
+                # (Path().cwd() / f'test_event_{payload.created_at}.json').write_text(json.dumps(json_data, indent=4, ensure_ascii=False), encoding='utf-8')
                 return Response(
                     200,
                     content=json.dumps({"retcode": 0, "message": "NoneBot2 Get it!"}),

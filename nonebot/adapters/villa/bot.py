@@ -169,6 +169,7 @@ class Bot(BaseBot, ApiClient):
                 message_offset += 6
                 mentioned.type = MentionType.ALL
             elif seg.type == "mentioned_robot":
+                message_text += f"@{self.bot_info.template.name} "
                 entities.append(
                     TextEntity(
                         offset=message_offset,
@@ -227,3 +228,6 @@ class Bot(BaseBot, ApiClient):
             mentionedInfo=mentioned,
             quote=quote,  # type: ignore
         )
+        # from pathlib import Path
+        # (Path().cwd() / 'send_msg.json').write_text(a.json(exclude_none=True))
+        # return a
