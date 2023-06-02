@@ -46,7 +46,7 @@ class Payload(BaseModel):
     send_at: int
     extend_data: dict
 
-    @root_validator
+    @root_validator(pre=True)
     def _add_villa_id_to_extend_data(cls, values: dict):
         if (
             values.get("type") == 2
