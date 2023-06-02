@@ -95,6 +95,7 @@ class SendMessageEvent(MessageEvent):
     msg_uid: str
     bot_msg_id: Optional[str]
 
+    villa_id: int
     to_me: bool = False
 
     @overrides(BaseEvent)

@@ -34,8 +34,8 @@ if TYPE_CHECKING:
 
 def _check_at_me(bot: "Bot", event: SendMessageEvent):
     if (
-        event.content.mentionedInfo
-        and bot.self_id in event.content.mentionedInfo.userIdList
+        event.content.mentioned_info
+        and bot.self_id in event.content.mentioned_info.user_id_list
     ):
         event.to_me = True
 
@@ -130,7 +130,7 @@ class Bot(BaseBot, ApiClient):
         return await self.send_message(
             villa_id=self.bot_info.villa_id,
             room_id=event.room_id,
-            msg_content=content_info.json(exclude_none=True),
+            msg_content=content_info.json(by_alias=True, exclude_none=True),
         )
 
     async def parse_message_content(self, message: Message) -> MessageContentInfo:
@@ -179,7 +179,7 @@ class Bot(BaseBot, ApiClient):
                     )
                 )
                 message_offset += len(f"@{self.bot_info.template.name}") + 1
-                mentioned.userIdList.append(self.self_id)
+                mentioned.user_id_list.append(self.self_id)
             elif seg.type == "mentioned_user":
                 user = await self.get_member(
                     villa_id=self.bot_info.villa_id, uid=seg.data["user_id"]
@@ -193,7 +193,7 @@ class Bot(BaseBot, ApiClient):
                     )
                 )
                 message_offset += len(f"@{user.basic.nickname}") + 1
-                mentioned.userIdList.append(str(user.basic.uid))
+                mentioned.user_id_list.append(str(user.basic.uid))
             elif seg.type == "villa_room_link":
                 room = await self.get_room(
                     villa_id=seg.data["villa_id"], room_id=seg.data["room_id"]
@@ -221,7 +221,7 @@ class Bot(BaseBot, ApiClient):
                 )
                 message_offset += len(seg.data["url"]) + 1
 
-        if not (mentioned.type == MentionType.ALL and mentioned.userIdList):
+        if not (mentioned.type == MentionType.ALL and mentioned.user_id_list):
             mentioned = None
         return MessageContentInfo(
             content=MessageContent(text=message_text, entities=entities),
@@ -229,5 +229,5 @@ class Bot(BaseBot, ApiClient):
             quote=quote,  # type: ignore
         )
         # from pathlib import Path
-        # (Path().cwd() / 'send_msg.json').write_text(a.json(exclude_none=True))
+        # (Path().cwd() / 'send_msg.json').write_text(a.json(by_alias=True, exclude_none=True))
         # return a

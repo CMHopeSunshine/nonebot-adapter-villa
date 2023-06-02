@@ -119,7 +119,7 @@ async def _send_message(
     msg_content: Union[str, MessageContentInfo],
 ) -> str:
     if isinstance(msg_content, MessageContentInfo):
-        content = msg_content.json(exclude_none=True)
+        content = msg_content.json(by_alias=True, exclude_none=True)
     else:
         content = msg_content
     request = Request(

@@ -4,7 +4,7 @@ import inspect
 from enum import Enum, IntEnum
 from typing import Any, List, Union, Literal, Optional
 
-from pydantic import Field, BaseModel, validator
+from pydantic import Field, BaseModel, validator, root_validator
 
 
 class ApiResponse(BaseModel):
@@ -45,6 +45,19 @@ class Payload(BaseModel):
     created_at: int
     send_at: int
     extend_data: dict
+
+    @root_validator
+    def _add_villa_id_to_extend_data(cls, values: dict):
+        if (
+            values.get("type") == 2
+            and "villa_id" in values.get("robot", {})
+            and "SendMessage" in values.get("extend_data", {})
+            and "villa_id" not in values["extend_data"]["SendMessage"]
+        ):
+            values["extend_data"]["SendMessage"]["villa_id"] = values["robot"][
+                "villa_id"
+            ]
+        return values
 
 
 ## 鉴权部分
@@ -141,7 +154,7 @@ class MessageContent(BaseModel):
 
 class MentionedInfo(BaseModel):
     type: MentionType
-    userIdList: List[str] = Field(default_factory=list)
+    user_id_list: List[str] = Field(default_factory=list, alias="userIdList")
 
 
 class QuoteInfo(BaseModel):
@@ -152,7 +165,7 @@ class QuoteInfo(BaseModel):
 
 
 class User(BaseModel):
-    portraitUri: str
+    portrait_uri: str = Field(alias="portraitUri")
     extra: dict
     name: str
     alias: str
@@ -177,7 +190,7 @@ class Trace(BaseModel):
 
 class MessageContentInfo(BaseModel):
     content: MessageContent
-    mentionedInfo: Optional[MentionedInfo] = None
+    mentioned_info: Optional[MentionedInfo] = Field(None, alias="mentionedInfo")
     quote: Optional[QuoteInfo] = None
     user: Optional[User] = None
     trace: Optional[Trace] = None

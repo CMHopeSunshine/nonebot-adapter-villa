@@ -78,7 +78,7 @@ if __name__ == "__main__":
 以下是一个简单的插件示例，展示各种消息段：
 
 ```python
-from nonebot import on_command, on_message
+from nonebot import on_command
 from nonebot.params import CommandArg
 
 from nonebot.adapter.villa import Bot, SendMessageEvent, Message, MessageSegment
@@ -86,7 +86,7 @@ from nonebot.adapter.villa import Bot, SendMessageEvent, Message, MessageSegment
 matcher = on_command('发送')
 
 @matcher.handle()
-async def matcher_handler(bot: Bot, event: SendMessageEvent, arg: Message = CommandArg()):
+async def matcher_handler(event: SendMessageEvent, arg: Message = CommandArg()):
     if event.room_id != 18509:
         return
     msg = Message()
@@ -97,7 +97,7 @@ async def matcher_handler(bot: Bot, event: SendMessageEvent, arg: Message = Comm
         elif l == "文字":
             msg += MessageSegment.text("文字")
         elif l == "房间":
-            msg += MessageSegment.villa_room_link(bot.bot_info.villa_id, event.room_id)
+            msg += MessageSegment.villa_room_link(event.villa_id, event.room_id)
         elif l == "链接":
             msg += MessageSegment.link("https://www.miyoushe.com/ys/article/39670307")
         else:
