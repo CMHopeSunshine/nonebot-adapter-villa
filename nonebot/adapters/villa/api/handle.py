@@ -12,12 +12,14 @@ if TYPE_CHECKING:
 
 
 async def _check_member_bot_access_token(
-    adapter: "Adapter", bot: "Bot", token: str
+    adapter: "Adapter", bot: "Bot", villa_id: int, token: str
 ) -> CheckMemberBotAccessTokenReturn:
     request = Request(
         method="POST",
         url=adapter.base_url / "vila/api/bot/platform/checkMemberBotAccessToken",
-        headers=bot.get_authorization_header(bot.bot_info.villa_id),
+        headers=bot.get_authorization_header(
+            villa_id
+        ),  # TODO: 文档中说无需鉴权，但不带header会报错，有待确认
         json={"token": token},
     )
     return parse_obj_as(

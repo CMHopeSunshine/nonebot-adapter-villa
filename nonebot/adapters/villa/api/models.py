@@ -48,6 +48,7 @@ class Payload(BaseModel):
 
     @root_validator(pre=True)
     def _add_villa_id_to_extend_data(cls, values: dict):
+        """把villa_id添加到extend_data中，方便使用"""
         if (
             values.get("type") == 2
             and "villa_id" in values.get("robot", {})
@@ -114,6 +115,9 @@ class MemberListReturn(BaseModel):
 class MentionType(IntEnum):
     ALL = 1
     PART = 2
+
+    def __repr__(self) -> str:
+        return self.name
 
 
 class MentionedRobot(BaseModel):
@@ -213,11 +217,17 @@ class RoomType(str, Enum):
     SCENE = "BOT_PLATFORM_ROOM_TYPE_SCENE_ROOM"
     INVALID = "BOT_PLATFORM_ROOM_TYPE_INVALID"
 
+    def __repr__(self) -> str:
+        return self.name
+
 
 class RoomDefaultNotifyType(str, Enum):
     NOTIFY = "BOT_PLATFORM_DEFAULT_NOTIFY_TYPE_NOTIFY"
     IGNORE = "BOT_PLATFORM_DEFAULT_NOTIFY_TYPE_IGNORE"
     INVALID = "BOT_PLATFORM_DEFAULT_NOTIFY_TYPE_INVALID"
+
+    def __repr__(self) -> str:
+        return self.name
 
 
 class SendMsgAuthRange(BaseModel):
@@ -236,16 +246,25 @@ class ListRoomType(IntEnum):
     POST = 2
     SCENE = 3
 
+    def __repr__(self) -> str:
+        return self.name
+
 
 class CreateRoomType(IntEnum):
     CHAT = 1
     POST = 2
     SCENE = 3
 
+    def __repr__(self) -> str:
+        return self.name
+
 
 class CreateRoomDefaultNotifyType(IntEnum):
     NOTIFY = 1
     IGNORE = 2
+
+    def __repr__(self) -> str:
+        return self.name
 
 
 class ListRoom(BaseModel):

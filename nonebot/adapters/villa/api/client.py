@@ -6,7 +6,7 @@ if TYPE_CHECKING:
 
     class ApiClient:
         async def check_member_bot_access_token(
-            self, *, token: str
+            self, *, villa_id: int, token: str
         ) -> CheckMemberBotAccessTokenReturn:
             ...
 

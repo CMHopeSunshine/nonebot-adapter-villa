@@ -40,34 +40,83 @@ class MessageSegment(BaseMessageSegment["Message"]):
 
     @staticmethod
     def text(text: str) -> "TextSegment":
+        """纯文本消息段
+
+        参数:
+            text: 文本内容
+
+        返回:
+            TextSegment: 消息段对象
+        """
         return TextSegment("text", {"text": text})
 
     @staticmethod
-    def mention_robot(bot_id: str) -> "MentionRobotSegement":
-        return MentionRobotSegement("mentioned_robot", {"bot_id": bot_id})
+    def mention_robot() -> "MentionRobotSegement":
+        """@机器人消息段，目前暂时只能@自己"""
+        # 好像目前并没有办法能艾特到其他机器人，因为没有办法获取到其他机器人的名称
+        return MentionRobotSegement("mentioned_robot")
+
+    # @staticmethod
+    # def mention_robot(bot_id: str) -> "MentionRobotSegement":
+    #     return MentionRobotSegement("mentioned_robot", {"bot_id": bot_id})
 
     @staticmethod
     def mention_user(user_id: Union[int, str]) -> "MentionUserSegement":
+        """@用户消息段
+
+        参数:
+            user_id: 用户ID
+
+        返回:
+            MentionUserSegement: 消息段对象
+        """
         return MentionUserSegement("mentioned_user", {"user_id": user_id})
 
     @staticmethod
     def mention_all() -> "MentionAllSegement":
+        """@全体成员消息段"""
         return MentionAllSegement("mention_all", {})
 
     @staticmethod
     def villa_room_link(
         villa_id: Union[int, str], room_id: Union[int, str]
     ) -> "VillaRoomLinkSegment":
+        """房间链接消息段，点击后可以跳转到指定房间
+
+        参数:
+            villa_id: 大别野ID
+            room_id: 房间ID
+
+        返回:
+            VillaRoomLinkSegment: 消息段对象
+        """
         return VillaRoomLinkSegment(
             "villa_room_link", {"villa_id": villa_id, "room_id": room_id}
         )
 
     @staticmethod
     def link(url: str) -> "LinkSegment":
+        """链接消息段，使用该消息段才能让链接可以直接点击进行跳转
+
+        参数:
+            url: 链接
+
+        返回:
+            LinkSegment: 消息段对象
+        """
         return LinkSegment("link", {"url": url})
 
     @staticmethod
     def quote(message_id: str, message_send_time: int) -> "QuoteSegment":
+        """引用(回复)消息段
+
+        参数:
+            message_id: 被引用的消息ID
+            message_send_time: 被引用的消息发送时间
+
+        返回:
+            QuoteSegment: 消息段对象
+        """
         return QuoteSegment(
             "quote", {"msg_id": message_id, "msg_send_time": message_send_time}
         )
@@ -100,7 +149,7 @@ class MentionAllSegement(MessageSegment):
 class VillaRoomLinkSegment(MessageSegment):
     @overrides(MessageSegment)
     def __str__(self) -> str:
-        return f"#{self.data['room_id']}-{self.data['villa_id']}]"
+        return f"#{self.data['room_id']}-{self.data['villa_id']}]"  # TODO: 更好的展示方式
 
 
 class LinkSegment(MessageSegment):
@@ -112,7 +161,7 @@ class LinkSegment(MessageSegment):
 class QuoteSegment(MessageSegment):
     @overrides(MessageSegment)
     def __str__(self) -> str:
-        return f">{self.data['msg_id']}"
+        return f">{self.data['msg_id']}"  # TODO: 更好的展示方式
 
 
 class Message(BaseMessage[MessageSegment]):
@@ -151,12 +200,20 @@ class Message(BaseMessage[MessageSegment]):
 
     @classmethod
     def parse(cls, content: MessageContentInfo) -> "Message":
+        """将大别野消息事件原始内容转为适配器使用的Message对象
+
+        参数:
+            content: 大别野消息事件原始内容
+
+        返回:
+            Message: 适配器Message对象
+        """
         msg = Message()
         text = content.content.text
         text_begin = 0
         for entity in content.content.entities:
             if isinstance(entity.entity, MentionedRobot):
-                msg.append(MessageSegment.mention_robot(entity.entity.bot_id))
+                msg.append(MessageSegment.mention_robot())
             elif isinstance(entity.entity, MentionedUser):
                 msg.append(MessageSegment.mention_user(entity.entity.user_id))
             elif isinstance(entity.entity, MentionedAll):
@@ -175,18 +232,3 @@ class Message(BaseMessage[MessageSegment]):
         if text:
             msg.append(MessageSegment.text(text))
         return msg
-
-    def extract_content(self) -> str:
-        return "".join(
-            str(seg)
-            for seg in self
-            if seg.type
-            in (
-                "text",
-                "mentioned_robot",
-                "mentioned_user",
-                "mention_all",
-                "villa_room_link",
-                "link",
-            )
-        )

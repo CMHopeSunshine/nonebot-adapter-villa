@@ -28,11 +28,26 @@ if TYPE_CHECKING:
     from .adapter import Adapter
 
 
-# def  _check_reply(bot: "Bot", event: SendMessageEvent):
-#     if event.content.quote
+async def _check_reply(bot: "Bot", event: SendMessageEvent):
+    """检查事件是否有引用消息，如果有则设置 reply 字段。
+
+    但是目前并没有API能获取被引用的消息的内容，所以现在不做。
+
+    参数:
+        bot: Bot对象
+        event: 事件
+    """
+    ...
 
 
 def _check_at_me(bot: "Bot", event: SendMessageEvent):
+    """检查事件是否和机器人有关，如果有关则设置 to_me 为 True，并删除消息中的 at 信息。
+
+    参数:
+        bot: Bot对象
+        event: 事件
+
+    """
     if (
         event.content.mentioned_info
         and bot.self_id in event.content.mentioned_info.user_id_list
@@ -80,7 +95,7 @@ def _check_at_me(bot: "Bot", event: SendMessageEvent):
 
 class Bot(BaseBot, ApiClient):
     """
-    Villa 协议 Bot 适配。
+    大别野协议 Bot 适配。
     """
 
     @overrides(BaseBot)
@@ -97,11 +112,21 @@ class Bot(BaseBot, ApiClient):
         return f"Bot(type={self.type!r}, self_id={self.self_id!r})"
 
     async def handle_event(self, event: Event):
+        """处理事件"""
         if isinstance(event, SendMessageEvent):
             _check_at_me(self, event)
+            # await _check_reply(self, event)
         await handle_event(self, event)
 
-    def get_authorization_header(self, villa_id: int) -> Dict[str, Any]:
+    def get_authorization_header(self, villa_id: int) -> Dict[str, str]:
+        """机器人凭证请求头
+
+        参数:
+            villa_id: 大别野ID
+
+        返回:
+            Dict[str, Any]: 请求头
+        """
         return {
             "x-rpc-bot_id": self.self_id,
             "x-rpc-bot_secret": self.bot_secret,
@@ -118,8 +143,22 @@ class Bot(BaseBot, ApiClient):
         reply_message: bool = False,
         **kwargs: Any,
     ) -> str:
+        """发送消息
+
+        参数:
+            event: 事件
+            message: 消息
+            mention_sender: 是否@消息发送者. 默认为 False.
+            reply_message: 是否引用原消息. 默认为 False.
+
+        异常:
+            RuntimeError: 事件不是消息事件时抛出
+
+        返回:
+            str: 消息ID
+        """
         if not isinstance(event, SendMessageEvent):
-            raise ValueError("Villa adapter can only send message in MessageEvent")
+            raise RuntimeError("Event cannot be replied to!")
         message = MessageSegment.text(message) if isinstance(message, str) else message
         message = message if isinstance(message, Message) else Message(message)
         if mention_sender:
@@ -128,7 +167,7 @@ class Bot(BaseBot, ApiClient):
             message += MessageSegment.quote(event.msg_uid, event.send_at)
         content_info = await self.parse_message_content(message)
         return await self.send_message(
-            villa_id=self.bot_info.villa_id,
+            villa_id=event.villa_id,
             room_id=event.room_id,
             msg_content=content_info.json(by_alias=True, exclude_none=True),
         )
@@ -155,21 +194,23 @@ class Bot(BaseBot, ApiClient):
         message_offset = 0
         entities = []
         mentioned = MentionedInfo(type=MentionType.PART)
-        for seg in message:
+        for i, seg in enumerate(message):
             if seg.type == "quote":
+                # 引用消息段在上方处理了，这里不需要处理
                 continue
             elif seg.type == "text":
                 message_text += seg.data["text"]
                 message_offset += len(seg.data["text"])
             elif seg.type == "mention_all":
-                message_text += "@全体成员 "
+                message_text += "@全体成员"
                 entities.append(
                     TextEntity(offset=message_offset, length=6, entity=MentionedAll())
                 )
                 message_offset += 6
                 mentioned.type = MentionType.ALL
             elif seg.type == "mentioned_robot":
-                message_text += f"@{self.bot_info.template.name} "
+                # 目前只能@到自己，尚未有办法@到其他机器人，所以这里先直接@到自己
+                message_text += f"@{self.bot_info.template.name}"
                 entities.append(
                     TextEntity(
                         offset=message_offset,
@@ -181,10 +222,11 @@ class Bot(BaseBot, ApiClient):
                 message_offset += len(f"@{self.bot_info.template.name}") + 1
                 mentioned.user_id_list.append(self.self_id)
             elif seg.type == "mentioned_user":
+                # 需要调用API获取被@的用户的昵称
                 user = await self.get_member(
                     villa_id=self.bot_info.villa_id, uid=seg.data["user_id"]
                 )
-                message_text += f"@{user.basic.nickname} "
+                message_text += f"@{user.basic.nickname}"
                 entities.append(
                     TextEntity(
                         offset=message_offset,
@@ -195,10 +237,11 @@ class Bot(BaseBot, ApiClient):
                 message_offset += len(f"@{user.basic.nickname}") + 1
                 mentioned.user_id_list.append(str(user.basic.uid))
             elif seg.type == "villa_room_link":
+                # 需要调用API获取房间的名称
                 room = await self.get_room(
                     villa_id=seg.data["villa_id"], room_id=seg.data["room_id"]
                 )
-                message_text += f"#{room.room_name} "
+                message_text += f"#{room.room_name}"
                 entities.append(
                     TextEntity(
                         offset=message_offset,
@@ -211,7 +254,7 @@ class Bot(BaseBot, ApiClient):
                 )
                 message_offset += len(f"#{room.room_name} ")
             elif seg.type == "link":
-                message_text += seg.data["url"] + " "
+                message_text += seg.data["url"]
                 entities.append(
                     TextEntity(
                         offset=message_offset,
@@ -220,6 +263,8 @@ class Bot(BaseBot, ApiClient):
                     )
                 )
                 message_offset += len(seg.data["url"]) + 1
+            if i != len(message) - 1:
+                message_text += " "
 
         if not (mentioned.type == MentionType.ALL and mentioned.user_id_list):
             mentioned = None

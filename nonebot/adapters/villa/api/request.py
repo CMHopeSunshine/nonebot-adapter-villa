@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 async def _request(adapter: "Adapter", bot: "Bot", request: Request) -> Any:
     try:
+        # 目前好像无论正常还是错误的状态码都是200，只是retcode有所不同，所以暂时不检查状态码
         data = await adapter.request(request)
         log(
             "TRACE",

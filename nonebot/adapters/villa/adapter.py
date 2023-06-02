@@ -9,6 +9,7 @@ from nonebot.drivers import (
     Driver,
     Request,
     Response,
+    ForwardDriver,
     ReverseDriver,
     HTTPServerSetup,
 )
@@ -37,12 +38,17 @@ class Adapter(BaseAdapter):
         return "大别野"
 
     def _setup(self):
-        if not isinstance(self.driver, ReverseDriver):
+        # ReverseDriver用于接收回调事件，ForwardDriver用于调用API
+        if not (
+            isinstance(self.driver, ReverseDriver)
+            and isinstance(self.driver, ForwardDriver)
+        ):
             raise RuntimeError(
-                f"Current driver {self.config.driver} doesn't support reverse connections!"
-                "Villa Adapter need a ReverseDriver to work."
+                f"Current driver {self.config.driver} doesn't support connections!"
+                "Villa Adapter need a ReverseDriver and ForwardDriver to work."
             )
         for bot_info in self.villa_config.villa_bots:
+            # TODO: 在启动时就先将Bot添加到bots中，而不是在收到事件时再添加
             http_setup = HTTPServerSetup(
                 URL(bot_info.callback_url),
                 "POST",
@@ -79,10 +85,18 @@ class Adapter(BaseAdapter):
                 if (event_class := event_classes.get(payload.type, None)) and (
                     event_class.__type__.name in payload.extend_data["EventData"]
                 ):
-                    event = event_class.parse_obj(
-                        payload.extend_data["EventData"][event_class.__type__.name]
-                    )
-                    asyncio.create_task(bot.handle_event(event))
+                    try:
+                        event = event_class.parse_obj(
+                            payload.extend_data["EventData"][event_class.__type__.name]
+                        )
+                    except Exception as e:
+                        log(
+                            "WARNING",
+                            f"Failed to parse event {escape_tag(repr(payload))}",
+                            e,
+                        )
+                    else:
+                        asyncio.create_task(bot.handle_event(event))
                 else:
                     log(
                         "INFO",
