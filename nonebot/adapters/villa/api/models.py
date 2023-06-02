@@ -51,12 +51,12 @@ class Payload(BaseModel):
         if (
             values.get("type") == 2
             and "villa_id" in values.get("robot", {})
-            and "SendMessage" in values.get("extend_data", {})
-            and "villa_id" not in values["extend_data"]["SendMessage"]
+            and "SendMessage" in values.get("extend_data", {}).get("EventData", {})
+            and "villa_id" not in values["extend_data"]["EventData"]["SendMessage"]
         ):
-            values["extend_data"]["SendMessage"]["villa_id"] = values["robot"][
-                "villa_id"
-            ]
+            values["extend_data"]["EventData"]["SendMessage"]["villa_id"] = values[
+                "robot"
+            ]["villa_id"]
         return values
 
 

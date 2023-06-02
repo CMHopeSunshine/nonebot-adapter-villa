@@ -86,7 +86,7 @@ from nonebot.adapter.villa import Bot, SendMessageEvent, Message, MessageSegment
 matcher = on_command('发送')
 
 @matcher.handle()
-async def matcher_handler(event: SendMessageEvent, arg: Message = CommandArg()):
+async def matcher_handler(bot: Bot, event: SendMessageEvent, arg: Message = CommandArg()):
     if event.room_id != 18509:
         return
     msg = Message()
@@ -94,6 +94,8 @@ async def matcher_handler(event: SendMessageEvent, arg: Message = CommandArg()):
     for l in lst:
         if l == "艾特我":
             msg += MessageSegment.mention_user(event.from_user_id)
+        elif l == "艾特bot":
+            msg += MessageSegment.mention_robot(bot.self_id)
         elif l == "文字":
             msg += MessageSegment.text("文字")
         elif l == "房间":
@@ -105,6 +107,6 @@ async def matcher_handler(event: SendMessageEvent, arg: Message = CommandArg()):
     await matcher.finish(msg)
 ```
 
-使用命令`@bot /发送 艾特我 文字 房间 链接`时，bot会回复`@你的名字 文字 #房间名 https://www.miyoushe.com/ys/article/39670307`
+使用命令`@bot /发送 艾特我 艾特bot 文字 房间 链接`时，bot会回复`@你的名字 @bot的名字 文字 #房间名 https://www.miyoushe.com/ys/article/39670307`
 
 注意，目前官方尚未支持**图片**
