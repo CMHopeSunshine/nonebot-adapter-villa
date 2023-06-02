@@ -81,7 +81,7 @@ if __name__ == "__main__":
 from nonebot import on_command
 from nonebot.params import CommandArg
 
-from nonebot.adapter.villa import Bot, SendMessageEvent, Message, MessageSegment
+from nonebot.adapters.villa import Bot, SendMessageEvent, Message, MessageSegment
 
 matcher = on_command('发送')
 
