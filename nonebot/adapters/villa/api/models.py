@@ -30,7 +30,7 @@ class RobotTemplate(BaseModel):
     name: str
     desc: str
     icon: str
-    commands: List[RobotCommand]
+    commands: Optional[List[RobotCommand]] = None
 
 
 class Robot(BaseModel):
