@@ -151,9 +151,21 @@ class TextEntity(BaseModel):
     entity: Union[MentionedRobot, MentionedUser, MentionedAll, VillaRoomLink, Link]
 
 
+class ImageSize(BaseModel):
+    width: int
+    height: int
+
+
+class Image(BaseModel):
+    url: str
+    size: ImageSize
+    file_size: int
+
+
 class MessageContent(BaseModel):
     text: str
     entities: List[TextEntity]
+    images: Optional[List[Image]] = None
 
 
 class MentionedInfo(BaseModel):
@@ -391,6 +403,8 @@ __all__ = [
     "QuoteInfo",
     "User",
     "Trace",
+    "ImageSize",
+    "Image",
     "MessageContentInfo",
     "Room",
     "RoomType",

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Union
 
 from nonebot.typing import overrides
 from nonebot.message import handle_event
@@ -10,8 +10,10 @@ from .event import Event, SendMessageEvent
 from .message import Message, MessageSegment
 from .api import (
     Link,
+    Image,
     Robot,
     ApiClient,
+    ImageSize,
     QuoteInfo,
     TextEntity,
     MentionType,
@@ -56,8 +58,9 @@ def _check_at_me(bot: "Bot", event: SendMessageEvent):
 
     def _is_at_me_seg(segment: MessageSegment) -> bool:
         return (
-            segment.type == "mentioned_robot"
-            and segment.data.get("bot_id") == bot.self_id
+            segment.type
+            == "mentioned_robot"
+            # and segment.data.get("bot_id") == bot.self_id
         )
 
     message = event.get_message()
@@ -125,7 +128,7 @@ class Bot(BaseBot, ApiClient):
             villa_id: 大别野ID
 
         返回:
-            Dict[str, Any]: 请求头
+            Dict[str, str]: 请求头
         """
         return {
             "x-rpc-bot_id": self.self_id,
@@ -192,9 +195,11 @@ class Bot(BaseBot, ApiClient):
 
         message_text = ""
         message_offset = 0
-        entities = []
+        entities: List[TextEntity] = []
+        images: List[Image] = []
         mentioned = MentionedInfo(type=MentionType.PART)
         for i, seg in enumerate(message):
+            space = " " if i != len(message) - 1 else ""
             if seg.type == "quote":
                 # 引用消息段在上方处理了，这里不需要处理
                 continue
@@ -202,7 +207,7 @@ class Bot(BaseBot, ApiClient):
                 message_text += seg.data["text"]
                 message_offset += len(seg.data["text"])
             elif seg.type == "mention_all":
-                message_text += "@全体成员"
+                message_text += "@全体成员{space}"
                 entities.append(
                     TextEntity(offset=message_offset, length=6, entity=MentionedAll())
                 )
@@ -210,7 +215,7 @@ class Bot(BaseBot, ApiClient):
                 mentioned.type = MentionType.ALL
             elif seg.type == "mentioned_robot":
                 # 目前只能@到自己，尚未有办法@到其他机器人，所以这里先直接@到自己
-                message_text += f"@{self.bot_info.template.name}"
+                message_text += f"@{self.bot_info.template.name}{space}"
                 entities.append(
                     TextEntity(
                         offset=message_offset,
@@ -226,7 +231,7 @@ class Bot(BaseBot, ApiClient):
                 user = await self.get_member(
                     villa_id=self.bot_info.villa_id, uid=seg.data["user_id"]
                 )
-                message_text += f"@{user.basic.nickname}"
+                message_text += f"@{user.basic.nickname}{space}"
                 entities.append(
                     TextEntity(
                         offset=message_offset,
@@ -241,7 +246,7 @@ class Bot(BaseBot, ApiClient):
                 room = await self.get_room(
                     villa_id=seg.data["villa_id"], room_id=seg.data["room_id"]
                 )
-                message_text += f"#{room.room_name}"
+                message_text += f"#{room.room_name}{space}"
                 entities.append(
                     TextEntity(
                         offset=message_offset,
@@ -254,7 +259,7 @@ class Bot(BaseBot, ApiClient):
                 )
                 message_offset += len(f"#{room.room_name} ")
             elif seg.type == "link":
-                message_text += seg.data["url"]
+                message_text += seg.data["url"] + space
                 entities.append(
                     TextEntity(
                         offset=message_offset,
@@ -263,13 +268,25 @@ class Bot(BaseBot, ApiClient):
                     )
                 )
                 message_offset += len(seg.data["url"]) + 1
-            if i != len(message) - 1:
-                message_text += " "
+            elif seg.type == "image":
+                images.append(
+                    Image(
+                        url=seg.data["url"],
+                        size=ImageSize(
+                            width=seg.data["width"], height=seg.data["height"]
+                        ),
+                        file_size=seg.data["file_size"],
+                    )
+                )
+
+        # 不能单独只发图片而没有其他文本内容
+        if images and not message_text:
+            message_text = "图片"
 
         if not (mentioned.type == MentionType.ALL and mentioned.user_id_list):
             mentioned = None
         return MessageContentInfo(
-            content=MessageContent(text=message_text, entities=entities),
+            content=MessageContent(text=message_text, entities=entities, images=images),
             mentionedInfo=mentioned,
             quote=quote,  # type: ignore
         )

@@ -95,18 +95,22 @@ async def matcher_handler(bot: Bot, event: SendMessageEvent, arg: Message = Comm
         if l == "艾特我":
             msg += MessageSegment.mention_user(event.from_user_id)
         elif l == "艾特bot":
-            msg += MessageSegment.mention_robot(bot.self_id)
+            msg += MessageSegment.mention_robot()
         elif l == "文字":
             msg += MessageSegment.text("文字")
         elif l == "房间":
             msg += MessageSegment.villa_room_link(event.villa_id, event.room_id)
         elif l == "链接":
             msg += MessageSegment.link("https://www.miyoushe.com/ys/article/39670307")
+        elif l == "图片":
+            msg += MessageSegment.image("https://upload-bbs.miyoushe.com/upload/2023/05/23/75276539/e49d7d85fc3f6c492e0d26fac3ec7303_6225108250761798626.png?x-oss-process=image//resize,s_600/quality,q_80/auto-orient,0/interlace,1/format,png",
+                                        width=690,
+                                        height=320,
+                                        file_size=436079)
+            # 支持url图片，要传图片宽高和字节大小
         else:
             msg += MessageSegment.text(" ")
     await matcher.finish(msg)
 ```
 
-使用命令`@bot /发送 艾特我 艾特bot 文字 房间 链接`时，bot会回复`@你的名字 @bot的名字 文字 #房间名 https://www.miyoushe.com/ys/article/39670307`
-
-注意，目前官方尚未支持**图片**
+使用命令`@bot /发送 艾特我 艾特bot 文字 房间 链接 图片`时，bot会回复`@你的名字 @bot的名字 文字 #房间名 https://www.miyoushe.com/ys/article/39670307 图片内容`

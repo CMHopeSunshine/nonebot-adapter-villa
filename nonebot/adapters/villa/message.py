@@ -121,6 +121,24 @@ class MessageSegment(BaseMessageSegment["Message"]):
             "quote", {"msg_id": message_id, "msg_send_time": message_send_time}
         )
 
+    @staticmethod
+    def image(url: str, width: int, height: int, file_size: int) -> "ImageSegment":
+        """图片消息段
+
+        参数:
+            url: 图片链接
+            width: 图片宽度
+            height: 图片高度
+            file_size: 图片大小
+
+        返回:
+            ImageSegment: 消息段对象
+        """
+        return ImageSegment(
+            "image",
+            {"url": url, "width": width, "height": height, "file_size": file_size},
+        )
+
 
 class TextSegment(MessageSegment):
     @overrides(MessageSegment)
@@ -131,7 +149,7 @@ class TextSegment(MessageSegment):
 class MentionRobotSegement(MessageSegment):
     @overrides(MessageSegment)
     def __str__(self) -> str:
-        return f"@{self.data['bot_id']}"
+        return "@Bot"
 
 
 class MentionUserSegement(MessageSegment):
@@ -156,6 +174,12 @@ class LinkSegment(MessageSegment):
     @overrides(MessageSegment)
     def __str__(self) -> str:
         return self.data["url"]
+
+
+class ImageSegment(MessageSegment):
+    @overrides(MessageSegment)
+    def __str__(self) -> str:
+        return f"<Image:{self.data['url']}>"
 
 
 class QuoteSegment(MessageSegment):
