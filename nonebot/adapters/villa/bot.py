@@ -172,6 +172,8 @@ class Bot(BaseBot, ApiClient):
         return await self.send_message(
             villa_id=event.villa_id,
             room_id=event.room_id,
+            object_name="MHY:Text",
+            # object_name="MHY:Image" if content_info.content.images else "MHY:Text",
             msg_content=content_info.json(by_alias=True, exclude_none=True),
         )
 
@@ -274,7 +276,9 @@ class Bot(BaseBot, ApiClient):
                         url=seg.data["url"],
                         size=ImageSize(
                             width=seg.data["width"], height=seg.data["height"]
-                        ),
+                        )
+                        if seg.data["width"] and seg.data["height"]
+                        else None,
                         file_size=seg.data["file_size"],
                     )
                 )

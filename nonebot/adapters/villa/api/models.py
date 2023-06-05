@@ -158,8 +158,8 @@ class ImageSize(BaseModel):
 
 class Image(BaseModel):
     url: str
-    size: ImageSize
-    file_size: int
+    size: Optional[ImageSize] = None
+    file_size: Optional[int] = None
 
 
 class MessageContent(BaseModel):

@@ -103,11 +103,8 @@ async def matcher_handler(bot: Bot, event: SendMessageEvent, cmd_arg: Message = 
             msg += MessageSegment.link("https://www.miyoushe.com/ys/article/39670307")
             # 使用link的话链接能够点击进行跳转，使用text的话不能点击
         elif arg == "图片":
-            msg += MessageSegment.image("https://upload-bbs.miyoushe.com/upload/2023/05/23/75276539/e49d7d85fc3f6c492e0d26fac3ec7303_6225108250761798626.png?x-oss-process=image//resize,s_600/quality,q_80/auto-orient,0/interlace,1/format,png",
-                                        width=690,
-                                        height=320,
-                                        file_size=436079)
-            # 暂时只支持url图片，且要传图片宽高和字节大小（就是这么怪）
+            msg += MessageSegment.image("https://upload-bbs.miyoushe.com/upload/2023/05/23/75276539/e49d7d85fc3f6c492e0d26fac3ec7303_6225108250761798626.png")
+            # 暂时只支持url图片
     await matcher.finish(msg)
 ```
 

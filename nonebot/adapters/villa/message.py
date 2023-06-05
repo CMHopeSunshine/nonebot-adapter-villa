@@ -1,4 +1,4 @@
-from typing import Type, Union, Iterable
+from typing import Type, Union, Iterable, Optional
 
 from nonebot.typing import overrides
 from nonebot.utils import escape_tag
@@ -122,7 +122,12 @@ class MessageSegment(BaseMessageSegment["Message"]):
         )
 
     @staticmethod
-    def image(url: str, width: int, height: int, file_size: int) -> "ImageSegment":
+    def image(
+        url: str,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+        file_size: Optional[int] = None,
+    ) -> "ImageSegment":
         """图片消息段
 
         参数:

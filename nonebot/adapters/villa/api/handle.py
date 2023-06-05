@@ -117,7 +117,7 @@ async def _send_message(
     bot: "Bot",
     villa_id: int,
     room_id: int,
-    # object_name: str,
+    object_name: str,
     msg_content: Union[str, MessageContentInfo],
 ) -> str:
     if isinstance(msg_content, MessageContentInfo):
@@ -128,7 +128,7 @@ async def _send_message(
         method="POST",
         url=adapter.base_url / "vila/api/bot/platform/sendMessage",
         headers=bot.get_authorization_header(villa_id),
-        json={"room_id": room_id, "object_name": "MHY:Text", "msg_content": content},
+        json={"room_id": room_id, "object_name": object_name, "msg_content": content},
     )
     return (await _request(adapter, bot, request))["bot_msg_id"]
 

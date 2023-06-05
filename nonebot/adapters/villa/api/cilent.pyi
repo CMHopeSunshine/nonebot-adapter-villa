@@ -29,7 +29,7 @@ class ApiClient:
         *,
         villa_id: int,
         room_id: int,
-        #    object_name: str,
+        object_name: str,
         msg_content: Union[str, MessageContentInfo],
     ) -> str: ...
     async def create_group(self, *, villa_id: int, group_name: str) -> int: ...
