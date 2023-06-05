@@ -100,7 +100,7 @@ async def matcher_handler(bot: Bot, event: SendMessageEvent, cmd_arg: Message = 
         elif arg == "房间":
             msg += MessageSegment.villa_room_link(event.villa_id, event.room_id)
         elif arg == "链接":
-            msg += MessageSegment.link("https://www.miyoushe.com/ys/article/39670307")
+            msg += MessageSegment.link("https://www.miyoushe.com/ys/article/39670307", "这是链接")
             # 使用link的话链接能够点击进行跳转，使用text的话不能点击
         elif arg == "图片":
             msg += MessageSegment.image("https://upload-bbs.miyoushe.com/upload/2023/05/23/75276539/e49d7d85fc3f6c492e0d26fac3ec7303_6225108250761798626.png")
@@ -108,4 +108,4 @@ async def matcher_handler(bot: Bot, event: SendMessageEvent, cmd_arg: Message = 
     await matcher.finish(msg)
 ```
 
-使用命令`@bot /发送 艾特我 艾特bot 文字 房间 链接 图片`时，bot会回复`@你的名字 @bot的名字 文字 #房间名 https://www.miyoushe.com/ys/article/39670307 图片内容`
+使用命令`@bot /发送 艾特我 艾特bot 文字 房间 链接 图片`时，bot会回复`@你的名字 @bot的名字 文字 #房间名 这是链接 图片内容`

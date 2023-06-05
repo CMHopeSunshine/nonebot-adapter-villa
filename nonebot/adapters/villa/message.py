@@ -95,7 +95,7 @@ class MessageSegment(BaseMessageSegment["Message"]):
         )
 
     @staticmethod
-    def link(url: str) -> "LinkSegment":
+    def link(url: str, text: Optional[str] = None) -> "LinkSegment":
         """链接消息段，使用该消息段才能让链接可以直接点击进行跳转
 
         参数:
@@ -104,7 +104,7 @@ class MessageSegment(BaseMessageSegment["Message"]):
         返回:
             LinkSegment: 消息段对象
         """
-        return LinkSegment("link", {"url": url})
+        return LinkSegment("link", {"url": url, "text": text})
 
     @staticmethod
     def quote(message_id: str, message_send_time: int) -> "QuoteSegment":
