@@ -261,15 +261,16 @@ class Bot(BaseBot, ApiClient):
                 )
                 message_offset += len(f"#{room.room_name} ")
             elif seg.type == "link":
-                message_text += (seg.data["text"] or seg.data["url"]) + space
+                show_text: str = seg.data["text"] or seg.data["url"]
+                message_text += (show_text) + space
                 entities.append(
                     TextEntity(
                         offset=message_offset,
-                        length=len(seg.data["url"].encode("utf-16")) // 2,
+                        length=len(show_text.encode("utf-16")) // 2,
                         entity=Link(url=seg.data["url"]),
                     )
                 )
-                message_offset += len(seg.data["url"]) + 1
+                message_offset += len(show_text) + 1
             elif seg.type == "image":
                 images.append(
                     Image(
