@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "nonebot-adapter-villa"
 version = "0.1.0"
-description = "MihoYo Villa adapter for nonebot2"
+description = "NoneBot2米游社大别野Bot适配器。MiHoYo Villa Bot adapter for nonebot2."
 authors = ["CMHopeSunshine <277073121@qq.com>"]
 license = "MIT"
 readme = "README.md"

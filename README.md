@@ -10,11 +10,13 @@ _✨ 大别野 协议适配 ✨_
 
 </div>
 
-## 说明
+## 安装
 
-本适配器仍在开发中。
+- 在`NoneBot2`项目目录下使用脚手架安装：`nb adapter install nonebot-adapter-villa`
+  
+或：
 
-目前请通过`pip install git+https://github.com/CMHopeSunshine/nonebot-adapter-villa.git@main` 安装。
+- 在`NoneBot2`项目环境下使用pip安装后手动注册：`pip install nonebot-adapter-villa`
 
 ## 配置
 
@@ -55,6 +57,8 @@ VILLA_BOTS='
 
 ### 注册适配器
 
+> 如使用nb脚手架来安装的，则不用手动注册
+
 在`bot.py`文件中(如果没有，使用`nb generate`来生成)注册本适配器，参考[adapter](https://v2.nonebot.dev/docs/advanced/adapter)，例如：
 
 ```python
@@ -90,7 +94,7 @@ async def matcher_handler(bot: Bot, event: SendMessageEvent, cmd_arg: Message = 
     args = cmd_arg.extract_plain_text().strip().split(' ')
     for arg in args:
         if arg == "艾特我":
-            msg += MessageSegment.mention_user(event.from_user_id)
+            msg += MessageSegment.mention_user(event.villa_id, event.from_user_id)
         elif arg == "艾特bot":
             msg += MessageSegment.mention_robot()
             # 目前只能艾特机器人自己
@@ -103,9 +107,23 @@ async def matcher_handler(bot: Bot, event: SendMessageEvent, cmd_arg: Message = 
             msg += MessageSegment.link("https://www.miyoushe.com/ys/article/39670307", "这是链接")
             # 使用link的话链接能够点击进行跳转，使用text的话不能点击
         elif arg == "图片":
-            msg += MessageSegment.image("https://upload-bbs.miyoushe.com/upload/2023/05/23/75276539/e49d7d85fc3f6c492e0d26fac3ec7303_6225108250761798626.png")
+            msg += MessageSegment.image("https://www.miyoushe.com/_nuxt/img/miHoYo_Game.2457753.png")
             # 暂时只支持url图片
     await matcher.finish(msg)
 ```
 
 使用命令`@bot /发送 艾特我 艾特bot 文字 房间 链接 图片`时，bot会回复`@你的名字 @bot的名字 文字 #房间名 这是链接 图片内容`
+
+
+## 反馈
+
+目前无论是大别野Bot还是本适配器都在测试开发中，如遇问题请提出issue，感谢支持！
+
+## 相关项目
+
+- [NoneBot2](https://github.com/nonebot/nonebot2) 非常好用的Python跨平台机器人框架！
+- [villa-py](https://github.com/CMHopeSunshine/villa-py) 大别野Bot Python SDK。
+
+推荐有成熟Python开发经验但对NoneBot2不熟悉的小伙伴选择`大别野Bot Python SDK`，
+
+对NoneBot2熟悉或希望接触更成熟的生态的小伙伴选择`NoneBot2+本适配器`进行开发。
