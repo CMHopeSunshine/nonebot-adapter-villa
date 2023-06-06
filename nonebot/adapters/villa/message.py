@@ -61,16 +61,19 @@ class MessageSegment(BaseMessageSegment["Message"]):
     #     return MentionRobotSegement("mentioned_robot", {"bot_id": bot_id})
 
     @staticmethod
-    def mention_user(user_id: Union[int, str]) -> "MentionUserSegement":
+    def mention_user(villa_id: int, user_id: int) -> "MentionUserSegement":
         """@用户消息段
 
         参数:
+            villa_id: 用户所在大别野ID
             user_id: 用户ID
 
         返回:
             MentionUserSegement: 消息段对象
         """
-        return MentionUserSegement("mentioned_user", {"user_id": user_id})
+        return MentionUserSegement(
+            "mentioned_user", {"villa_id": villa_id, "user_id": user_id}
+        )
 
     @staticmethod
     def mention_all() -> "MentionAllSegement":
@@ -78,9 +81,7 @@ class MessageSegment(BaseMessageSegment["Message"]):
         return MentionAllSegement("mention_all", {})
 
     @staticmethod
-    def villa_room_link(
-        villa_id: Union[int, str], room_id: Union[int, str]
-    ) -> "VillaRoomLinkSegment":
+    def villa_room_link(villa_id: int, room_id: int) -> "VillaRoomLinkSegment":
         """房间链接消息段，点击后可以跳转到指定房间
 
         参数:
@@ -228,7 +229,7 @@ class Message(BaseMessage[MessageSegment]):
         #     text_begin = embed.end()
 
     @classmethod
-    def parse(cls, content: MessageContentInfo) -> "Message":
+    def parse(cls, content: MessageContentInfo, villa_id: int) -> "Message":
         """将大别野消息事件原始内容转为适配器使用的Message对象
 
         参数:
@@ -244,13 +245,16 @@ class Message(BaseMessage[MessageSegment]):
             if isinstance(entity.entity, MentionedRobot):
                 msg.append(MessageSegment.mention_robot())
             elif isinstance(entity.entity, MentionedUser):
-                msg.append(MessageSegment.mention_user(entity.entity.user_id))
+                msg.append(
+                    MessageSegment.mention_user(int(entity.entity.user_id), villa_id)
+                )
             elif isinstance(entity.entity, MentionedAll):
                 msg.append(MessageSegment.mention_all())
             elif isinstance(entity.entity, VillaRoomLink):
                 msg.append(
                     MessageSegment.villa_room_link(
-                        entity.entity.room_id, entity.entity.villa_id
+                        int(entity.entity.villa_id),
+                        int(entity.entity.room_id),
                     )
                 )
             elif isinstance(entity.entity, Link):

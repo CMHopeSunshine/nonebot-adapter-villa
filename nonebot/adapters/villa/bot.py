@@ -165,7 +165,9 @@ class Bot(BaseBot, ApiClient):
         message = MessageSegment.text(message) if isinstance(message, str) else message
         message = message if isinstance(message, Message) else Message(message)
         if mention_sender:
-            message.insert(0, MessageSegment.mention_user(event.from_user_id))
+            message.insert(
+                0, MessageSegment.mention_user(event.villa_id, event.from_user_id)
+            )
         if reply_message:
             message += MessageSegment.quote(event.msg_uid, event.send_at)
         content_info = await self.parse_message_content(message)
@@ -231,7 +233,7 @@ class Bot(BaseBot, ApiClient):
             elif seg.type == "mentioned_user":
                 # 需要调用API获取被@的用户的昵称
                 user = await self.get_member(
-                    villa_id=self.bot_info.villa_id, uid=seg.data["user_id"]
+                    villa_id=seg.data["villa_id"], uid=seg.data["user_id"]
                 )
                 message_text += f"@{user.basic.nickname}{space}"
                 entities.append(

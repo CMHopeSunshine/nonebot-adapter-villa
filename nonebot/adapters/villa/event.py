@@ -136,7 +136,7 @@ class SendMessageEvent(MessageEvent):
     def get_message(self) -> Message:
         """获取事件消息"""
         if not hasattr(self, "_message"):
-            setattr(self, "_message", Message.parse(self.content))
+            setattr(self, "_message", Message.parse(self.content, self.villa_id))
         return getattr(self, "_message")
 
     @property
