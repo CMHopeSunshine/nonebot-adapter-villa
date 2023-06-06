@@ -8,6 +8,10 @@
 
 _✨ 大别野 协议适配 ✨_
 
+<img src="https://img.shields.io/pypi/v/nonebot-adapter-villa" alt="version">
+<img src="https://img.shields.io/badge/Python-3.8+-yellow" alt="python">
+<a href="https://cdn.jsdelivr.net/gh/CMHopeSunshine/nonebot-adapter-villa@master/LICENSE"><img src="https://img.shields.io/github/license/CMHopeSunshine/nonebot-adapter-villa" alt="license"></a>
+
 </div>
 
 ## 安装
