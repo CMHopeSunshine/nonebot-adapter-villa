@@ -123,6 +123,11 @@ async def matcher_handler(bot: Bot, event: SendMessageEvent, cmd_arg: Message = 
 
 目前无论是大别野Bot还是本适配器都在测试开发中，如遇问题请提出issue，感谢支持！
 
+也欢迎来我的大别野【尘世闲游】进行交流~ 
+
+- 大别野ID: wgiJNaU
+- [Web端链接](https://dby.miyoushe.com/chat/1047/21652)
+
 ## 相关项目
 
 - [NoneBot2](https://github.com/nonebot/nonebot2) 非常好用的Python跨平台机器人框架！
