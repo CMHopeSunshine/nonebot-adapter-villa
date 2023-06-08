@@ -80,7 +80,7 @@ class Adapter(BaseAdapter):
                     else:
                         log("WARNING", f"<r>Missing bot secret for bot {bot_id}</r>")
                 bot = cast(Bot, bot)
-                bot.bot_info = payload.robot
+                bot._bot_info = payload.robot
 
                 if (event_class := event_classes.get(payload.type, None)) and (
                     event_class.__type__.name in payload.extend_data["EventData"]
@@ -113,6 +113,7 @@ class Adapter(BaseAdapter):
     @overrides(BaseAdapter)
     async def _call_api(self, bot: Bot, api: str, **data: Any) -> Any:
         log("DEBUG", f"Calling API <y>{api}</y>")
+        log("TRACE", f"With Data <y>{data}</y>")
         if (api_handler := API_HANDLERS.get(api)) is None:
             raise ApiNotAvailable(api)
         return await api_handler(self, bot, **data)

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Union, Optional
 
 from nonebot.typing import overrides
 from nonebot.message import handle_event
@@ -18,6 +18,7 @@ from .api import (
     TextEntity,
     MentionType,
     MentionedAll,
+    RobotCommand,
     MentionedInfo,
     MentionedUser,
     VillaRoomLink,
@@ -58,9 +59,8 @@ def _check_at_me(bot: "Bot", event: SendMessageEvent):
 
     def _is_at_me_seg(segment: MessageSegment) -> bool:
         return (
-            segment.type
-            == "mentioned_robot"
-            # and segment.data.get("bot_id") == bot.self_id
+            segment.type == "mentioned_robot"
+            and segment.data.get("bot_id") == bot.self_id
         )
 
     message = event.get_message()
@@ -107,12 +107,36 @@ class Bot(BaseBot, ApiClient):
     ):
         super().__init__(adapter, self_id)
         self.adapter: Adapter = adapter
-        self.bot_info: Robot = bot_info
         self.bot_secret: str = bot_secret
+        self._bot_info: Robot = bot_info
 
     @overrides(BaseBot)
     def __repr__(self) -> str:
         return f"Bot(type={self.type!r}, self_id={self.self_id!r})"
+
+    @property
+    def nickname(self) -> str:
+        """Bot 昵称"""
+        return self._bot_info.template.name
+
+    @property
+    def commands(self) -> Optional[List[RobotCommand]]:
+        """Bot 命令预设命令列表"""
+        return self._bot_info.template.commands
+
+    @property
+    def description(self) -> str:
+        """Bot 介绍描述"""
+        return self._bot_info.template.desc
+
+    @property
+    def avatar_icon(self) -> str:
+        """Bot 头像图标地址"""
+        return self._bot_info.template.icon
+
+    @property
+    def current_villd_id(self) -> int:
+        return self._bot_info.villa_id
 
     async def handle_event(self, event: Event):
         """处理事件"""
@@ -121,8 +145,10 @@ class Bot(BaseBot, ApiClient):
             # await _check_reply(self, event)
         await handle_event(self, event)
 
-    def get_authorization_header(self, villa_id: int) -> Dict[str, str]:
-        """机器人凭证请求头
+    def get_authorization_header(
+        self, villa_id: Optional[int] = None
+    ) -> Dict[str, str]:
+        """Bot 鉴权凭证请求头
 
         参数:
             villa_id: 大别野ID
@@ -133,8 +159,7 @@ class Bot(BaseBot, ApiClient):
         return {
             "x-rpc-bot_id": self.self_id,
             "x-rpc-bot_secret": self.bot_secret,
-            "x-rpc-bot_villa_id": str(villa_id),
-            # "Content-Type": "application/json"
+            "x-rpc-bot_villa_id": str(villa_id or ""),
         }
 
     @overrides(BaseBot)
@@ -202,45 +227,47 @@ class Bot(BaseBot, ApiClient):
         entities: List[TextEntity] = []
         images: List[Image] = []
         mentioned = MentionedInfo(type=MentionType.PART)
-        for i, seg in enumerate(message):
-            space = " " if i != len(message) - 1 else ""
-            if seg.type == "quote":
-                # 引用消息段在上方处理了，这里不需要处理
-                continue
-            elif seg.type == "text":
+        for seg in message:
+            if seg.type == "text":
                 message_text += seg.data["text"]
                 message_offset += len(seg.data["text"])
             elif seg.type == "mention_all":
-                message_text += "@全体成员{space}"
+                message_text += f"@{seg.data['show_text']} "
                 entities.append(
-                    TextEntity(offset=message_offset, length=6, entity=MentionedAll())
+                    TextEntity(
+                        offset=message_offset,
+                        length=6,
+                        entity=MentionedAll(show_text=seg.data["show_text"]),
+                    )
                 )
                 message_offset += 6
                 mentioned.type = MentionType.ALL
             elif seg.type == "mentioned_robot":
-                # 目前只能@到自己，尚未有办法@到其他机器人，所以这里先直接@到自己
-                message_text += f"@{self.bot_info.template.name}{space}"
+                message_text += f"@{seg.data['bot_name']} "
                 entities.append(
                     TextEntity(
                         offset=message_offset,
-                        length=len(f"@{self.bot_info.template.name}".encode("utf-16"))
-                        // 2,
-                        entity=MentionedRobot(bot_id=self.self_id),
+                        length=len(f"@{seg.data['bot_name']}".encode("utf-16")) // 2,
+                        entity=MentionedRobot(
+                            bot_id=seg.data["bot_id"], bot_name=seg.data["bot_name"]
+                        ),
                     )
                 )
-                message_offset += len(f"@{self.bot_info.template.name}") + 1
-                mentioned.user_id_list.append(self.self_id)
+                message_offset += len(f"@{seg.data['bot_name']}") + 1
+                mentioned.user_id_list.append(seg.data["bot_id"])
             elif seg.type == "mentioned_user":
                 # 需要调用API获取被@的用户的昵称
                 user = await self.get_member(
                     villa_id=seg.data["villa_id"], uid=seg.data["user_id"]
                 )
-                message_text += f"@{user.basic.nickname}{space}"
+                message_text += f"@{user.basic.nickname} "
                 entities.append(
                     TextEntity(
                         offset=message_offset,
                         length=len(f"@{user.basic.nickname}".encode("utf-16")) // 2,
-                        entity=MentionedUser(user_id=str(user.basic.uid)),
+                        entity=MentionedUser(
+                            user_id=str(user.basic.uid), user_name=user.basic.nickname
+                        ),
                     )
                 )
                 message_offset += len(f"@{user.basic.nickname}") + 1
@@ -250,7 +277,7 @@ class Bot(BaseBot, ApiClient):
                 room = await self.get_room(
                     villa_id=seg.data["villa_id"], room_id=seg.data["room_id"]
                 )
-                message_text += f"#{room.room_name}{space}"
+                message_text += f"#{room.room_name} "
                 entities.append(
                     TextEntity(
                         offset=message_offset,
@@ -258,21 +285,23 @@ class Bot(BaseBot, ApiClient):
                         entity=VillaRoomLink(
                             villa_id=str(seg.data["villa_id"]),
                             room_id=str(seg.data["room_id"]),
+                            room_name=room.room_name,
                         ),
                     )
                 )
                 message_offset += len(f"#{room.room_name} ")
             elif seg.type == "link":
-                show_text: str = seg.data["text"] or seg.data["url"]
-                message_text += (show_text) + space
+                message_text += seg.data["show_text"]
                 entities.append(
                     TextEntity(
                         offset=message_offset,
-                        length=len(show_text.encode("utf-16")) // 2,
-                        entity=Link(url=seg.data["url"]),
+                        length=len(seg.data["show_text"].encode("utf-16")) // 2,
+                        entity=Link(
+                            url=seg.data["url"], show_text=seg.data["show_text"]
+                        ),
                     )
                 )
-                message_offset += len(show_text) + 1
+                message_offset += len(seg.data["show_text"]) + 1
             elif seg.type == "image":
                 images.append(
                     Image(
@@ -286,9 +315,9 @@ class Bot(BaseBot, ApiClient):
                     )
                 )
 
-        # 不能单独只发图片而没有其他文本内容
+        # 不能单独只发图片而没有其他文本内容，塞一个零宽度空格
         if images and not message_text:
-            message_text = "图片"
+            message_text = "\u200B"
 
         if not (mentioned.type == MentionType.ALL and mentioned.user_id_list):
             mentioned = None
@@ -297,6 +326,3 @@ class Bot(BaseBot, ApiClient):
             mentionedInfo=mentioned,
             quote=quote,  # type: ignore
         )
-        # from pathlib import Path
-        # (Path().cwd() / 'send_msg.json').write_text(a.json(by_alias=True, exclude_none=True))
-        # return a

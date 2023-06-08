@@ -6,15 +6,6 @@ from nonebot.utils import escape_tag
 from nonebot.adapters import Message as BaseMessage
 from nonebot.adapters import MessageSegment as BaseMessageSegment
 
-from .api import (
-    Link,
-    MentionedAll,
-    MentionedUser,
-    VillaRoomLink,
-    MentionedRobot,
-    MessageContentInfo,
-)
-
 
 class MessageSegment(BaseMessageSegment["Message"]):
     @classmethod
@@ -51,14 +42,19 @@ class MessageSegment(BaseMessageSegment["Message"]):
         return TextSegment("text", {"text": text})
 
     @staticmethod
-    def mention_robot() -> "MentionRobotSegement":
-        """@机器人消息段，目前暂时只能@自己"""
-        # 好像目前并没有办法能艾特到其他机器人，因为没有办法获取到其他机器人的名称
-        return MentionRobotSegement("mentioned_robot")
+    def mention_robot(bot_id: str, bot_name: str) -> "MentionRobotSegement":
+        """@机器人消息段
 
-    # @staticmethod
-    # def mention_robot(bot_id: str) -> "MentionRobotSegement":
-    #     return MentionRobotSegement("mentioned_robot", {"bot_id": bot_id})
+        参数:
+            bot_id: 机器人ID
+            bot_name: 机器人的名字
+
+        返回:
+            MentionRobotSegement: 消息段对象
+        """
+        return MentionRobotSegement(
+            "mentioned_robot", {"bot_id": bot_id, "bot_name": bot_name}
+        )
 
     @staticmethod
     def mention_user(villa_id: int, user_id: int) -> "MentionUserSegement":
@@ -76,12 +72,12 @@ class MessageSegment(BaseMessageSegment["Message"]):
         )
 
     @staticmethod
-    def mention_all() -> "MentionAllSegement":
+    def mention_all(show_text: str = "全体成员") -> "MentionAllSegement":
         """@全体成员消息段"""
-        return MentionAllSegement("mention_all", {})
+        return MentionAllSegement("mention_all", {"show_text": show_text})
 
     @staticmethod
-    def villa_room_link(villa_id: int, room_id: int) -> "VillaRoomLinkSegment":
+    def room_link(villa_id: int, room_id: int) -> "RoomLinkSegment":
         """房间链接消息段，点击后可以跳转到指定房间
 
         参数:
@@ -91,21 +87,22 @@ class MessageSegment(BaseMessageSegment["Message"]):
         返回:
             VillaRoomLinkSegment: 消息段对象
         """
-        return VillaRoomLinkSegment(
+        return RoomLinkSegment(
             "villa_room_link", {"villa_id": villa_id, "room_id": room_id}
         )
 
     @staticmethod
-    def link(url: str, text: Optional[str] = None) -> "LinkSegment":
+    def link(url: str, show_text: Optional[str] = None) -> "LinkSegment":
         """链接消息段，使用该消息段才能让链接可以直接点击进行跳转
 
         参数:
             url: 链接
+            show_text: 链接显示的文本
 
         返回:
             LinkSegment: 消息段对象
         """
-        return LinkSegment("link", {"url": url, "text": text})
+        return LinkSegment("link", {"url": url, "show_text": show_text or url})
 
     @staticmethod
     def quote(message_id: str, message_send_time: int) -> "QuoteSegment":
@@ -155,43 +152,43 @@ class TextSegment(MessageSegment):
 class MentionRobotSegement(MessageSegment):
     @overrides(MessageSegment)
     def __str__(self) -> str:
-        return "@Bot"
+        return f"<MentionRobot:bot_id={self.data['bot_id']} bot_name={self.data['bot_name']}>"
 
 
 class MentionUserSegement(MessageSegment):
     @overrides(MessageSegment)
     def __str__(self) -> str:
-        return f"@{self.data['user_id']}"
+        return f"<MentionUser:user_id={self.data['user_id']}>"
 
 
 class MentionAllSegement(MessageSegment):
     @overrides(MessageSegment)
     def __str__(self) -> str:
-        return "@全体成员"
+        return f"<MentionAll:show_text={self.data['show_text']}>"
 
 
-class VillaRoomLinkSegment(MessageSegment):
+class RoomLinkSegment(MessageSegment):
     @overrides(MessageSegment)
     def __str__(self) -> str:
-        return f"#{self.data['room_id']}-{self.data['villa_id']}]"  # TODO: 更好的展示方式
+        return f"<RoomLink:villa_id={self.data['villa_id']} room_id={self.data['room_id']}>"
 
 
 class LinkSegment(MessageSegment):
     @overrides(MessageSegment)
     def __str__(self) -> str:
-        return self.data["url"]
+        return f"Link:url={self.data['url']}"
 
 
 class ImageSegment(MessageSegment):
     @overrides(MessageSegment)
     def __str__(self) -> str:
-        return f"<Image:{self.data['url']}>"
+        return f"<Image:url={self.data['url']}>"
 
 
 class QuoteSegment(MessageSegment):
     @overrides(MessageSegment)
     def __str__(self) -> str:
-        return f">{self.data['msg_id']}"  # TODO: 更好的展示方式
+        return f"<Quote:msg_id={self.data['msg_id']}>"
 
 
 class Message(BaseMessage[MessageSegment]):
@@ -220,48 +217,3 @@ class Message(BaseMessage[MessageSegment]):
     @overrides(BaseMessage)
     def _construct(msg: str) -> Iterable[MessageSegment]:
         yield MessageSegment.text(msg)
-        # TODO: 找到msg中的http或者https链接，将其转换为LinkSegment
-        # text_begin = 0
-        # for embed in re.finditer(r"https?://[^\s]+", msg):
-        #     if embed.start() > text_begin:
-        #         yield MessageSegment.text(msg[text_begin : embed.start()])
-        #     yield MessageSegment.link(embed.group())
-        #     text_begin = embed.end()
-
-    @classmethod
-    def parse(cls, content: MessageContentInfo, villa_id: int) -> "Message":
-        """将大别野消息事件原始内容转为适配器使用的Message对象
-
-        参数:
-            content: 大别野消息事件原始内容
-
-        返回:
-            Message: 适配器Message对象
-        """
-        msg = Message()
-        text = content.content.text
-        text_begin = 0
-        for entity in content.content.entities:
-            if isinstance(entity.entity, MentionedRobot):
-                msg.append(MessageSegment.mention_robot())
-            elif isinstance(entity.entity, MentionedUser):
-                msg.append(
-                    MessageSegment.mention_user(int(entity.entity.user_id), villa_id)
-                )
-            elif isinstance(entity.entity, MentionedAll):
-                msg.append(MessageSegment.mention_all())
-            elif isinstance(entity.entity, VillaRoomLink):
-                msg.append(
-                    MessageSegment.villa_room_link(
-                        int(entity.entity.villa_id),
-                        int(entity.entity.room_id),
-                    )
-                )
-            elif isinstance(entity.entity, Link):
-                msg.append(MessageSegment.link(entity.entity.url))
-            if text_sengment := text[text_begin : entity.offset]:
-                msg.append(MessageSegment.text(text_sengment))
-            text = text[(entity.offset + entity.length) :]
-        if text:
-            msg.append(MessageSegment.text(text))
-        return msg
