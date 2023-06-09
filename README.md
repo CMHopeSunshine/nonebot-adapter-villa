@@ -8,9 +8,17 @@
 
 _✨ 大别野 协议适配 ✨_
 
+<a href="https://cdn.jsdelivr.net/gh/CMHopeSunshine/nonebot-adapter-villa@master/LICENSE">
+  <img src="https://img.shields.io/github/license/CMHopeSunshine/nonebot-adapter-villa" alt="license">
+</a>
 <img src="https://img.shields.io/pypi/v/nonebot-adapter-villa" alt="version">
 <img src="https://img.shields.io/badge/Python-3.8+-yellow" alt="python">
-<a href="https://cdn.jsdelivr.net/gh/CMHopeSunshine/nonebot-adapter-villa@master/LICENSE"><img src="https://img.shields.io/github/license/CMHopeSunshine/nonebot-adapter-villa" alt="license"></a>
+<a href="https://pypi.python.org/pypi/nonebot-adapter-villa">
+  <img src="https://img.shields.io/pypi/dm/nonebot-adapter-villa" alt="pypi download">
+</a>
+<a href="https://wakatime.com/badge/user/eed3f89c-5d65-46e6-ab19-78dcc4b62b3f/project/838e7f55-f8b8-49ff-aec0-29ad264931cf">
+  <img src="https://wakatime.com/badge/user/eed3f89c-5d65-46e6-ab19-78dcc4b62b3f/project/838e7f55-f8b8-49ff-aec0-29ad264931cf.svg" alt="wakatime">
+</a>
 
 </div>
 
@@ -38,7 +46,7 @@ DRIVER=~fastapi+~httpx
 
 ### VILLA_BOTS
 
-配置机器人帐号列表，每个bot有3个必填配置，在大别野官方机器人开发者社区(别野ID: OpenVilla)申请时获得，
+配置机器人帐号列表，每个bot有3个必填配置，在大别野[官方机器人开发者社区](https://dby.miyoushe.com/chat/463/20020)(别野ID: OpenVilla)申请时获得，
 
 - bot_id: 机器人id，以`bot_`开头
 - bot_secret: 机器人密钥
