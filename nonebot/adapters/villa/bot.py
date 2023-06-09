@@ -6,6 +6,7 @@ from nonebot.internal.adapter.adapter import Adapter
 
 from nonebot.adapters import Bot as BaseBot
 
+from .utils import log
 from .event import Event, SendMessageEvent
 from .message import Message, MessageSegment
 from .api import (
@@ -221,99 +222,107 @@ class Bot(BaseBot, ApiClient):
                 original_message_id=quote.data["msg_id"],
                 original_message_send_time=quote.data["msg_send_time"],
             )
-
+        if images_msg := (message["image"] or None):
+            images = [
+                Image(
+                    url=seg.data["url"],
+                    size=ImageSize(width=seg.data["width"], height=seg.data["height"])
+                    if seg.data["width"] and seg.data["height"]
+                    else None,
+                    file_size=seg.data["file_size"],
+                )
+                for seg in images_msg
+            ]
+        else:
+            images = None
+        cal_len = lambda x: len(x.encode("utf-16")) // 2 - 1
         message_text = ""
         message_offset = 0
         entities: List[TextEntity] = []
-        images: List[Image] = []
         mentioned = MentionedInfo(type=MentionType.PART)
         for seg in message:
-            if seg.type == "text":
-                message_text += seg.data["text"]
-                message_offset += len(seg.data["text"])
-            elif seg.type == "mention_all":
-                message_text += f"@{seg.data['show_text']} "
-                entities.append(
-                    TextEntity(
-                        offset=message_offset,
-                        length=6,
-                        entity=MentionedAll(show_text=seg.data["show_text"]),
-                    )
-                )
-                message_offset += 6
-                mentioned.type = MentionType.ALL
-            elif seg.type == "mentioned_robot":
-                message_text += f"@{seg.data['bot_name']} "
-                entities.append(
-                    TextEntity(
-                        offset=message_offset,
-                        length=len(f"@{seg.data['bot_name']}".encode("utf-16")) // 2,
-                        entity=MentionedRobot(
-                            bot_id=seg.data["bot_id"], bot_name=seg.data["bot_name"]
-                        ),
-                    )
-                )
-                message_offset += len(f"@{seg.data['bot_name']}") + 1
-                mentioned.user_id_list.append(seg.data["bot_id"])
-            elif seg.type == "mentioned_user":
-                # 需要调用API获取被@的用户的昵称
-                user = await self.get_member(
-                    villa_id=seg.data["villa_id"], uid=seg.data["user_id"]
-                )
-                message_text += f"@{user.basic.nickname} "
-                entities.append(
-                    TextEntity(
-                        offset=message_offset,
-                        length=len(f"@{user.basic.nickname}".encode("utf-16")) // 2,
-                        entity=MentionedUser(
-                            user_id=str(user.basic.uid), user_name=user.basic.nickname
-                        ),
-                    )
-                )
-                message_offset += len(f"@{user.basic.nickname}") + 1
-                mentioned.user_id_list.append(str(user.basic.uid))
-            elif seg.type == "villa_room_link":
-                # 需要调用API获取房间的名称
-                room = await self.get_room(
-                    villa_id=seg.data["villa_id"], room_id=seg.data["room_id"]
-                )
-                message_text += f"#{room.room_name} "
-                entities.append(
-                    TextEntity(
-                        offset=message_offset,
-                        length=len(f"#{room.room_name}".encode("utf-16")) // 2,
-                        entity=VillaRoomLink(
-                            villa_id=str(seg.data["villa_id"]),
-                            room_id=str(seg.data["room_id"]),
-                            room_name=room.room_name,
-                        ),
-                    )
-                )
-                message_offset += len(f"#{room.room_name} ")
-            elif seg.type == "link":
-                message_text += seg.data["show_text"]
-                entities.append(
-                    TextEntity(
-                        offset=message_offset,
-                        length=len(seg.data["show_text"].encode("utf-16")) // 2,
-                        entity=Link(
-                            url=seg.data["url"], show_text=seg.data["show_text"]
-                        ),
-                    )
-                )
-                message_offset += len(seg.data["show_text"]) + 1
-            elif seg.type == "image":
-                images.append(
-                    Image(
-                        url=seg.data["url"],
-                        size=ImageSize(
-                            width=seg.data["width"], height=seg.data["height"]
+            try:
+                if seg.type in ("quote", "image"):
+                    continue
+                if seg.type == "text":
+                    seg_text = seg.data["text"]
+                    length = cal_len(seg_text)
+                elif seg.type == "mention_all":
+                    seg_text = f"@{seg.data['show_text']} "
+                    length = cal_len(seg_text)
+                    entities.append(
+                        TextEntity(
+                            offset=message_offset,
+                            length=length,
+                            entity=MentionedAll(show_text=seg.data["show_text"]),
                         )
-                        if seg.data["width"] and seg.data["height"]
-                        else None,
-                        file_size=seg.data["file_size"],
                     )
-                )
+                    mentioned.type = MentionType.ALL
+                elif seg.type == "mentioned_robot":
+                    seg_text = f"@{seg.data['bot_name']} "
+                    length = cal_len(seg_text)
+                    entities.append(
+                        TextEntity(
+                            offset=message_offset,
+                            length=length,
+                            entity=MentionedRobot(
+                                bot_id=seg.data["bot_id"], bot_name=seg.data["bot_name"]
+                            ),
+                        )
+                    )
+                    mentioned.user_id_list.append(seg.data["bot_id"])
+                elif seg.type == "mentioned_user":
+                    # 需要调用API获取被@的用户的昵称
+                    user = await self.get_member(
+                        villa_id=seg.data["villa_id"], uid=seg.data["user_id"]
+                    )
+                    seg_text = f"@{user.basic.nickname} "
+                    length = cal_len(seg_text)
+                    entities.append(
+                        TextEntity(
+                            offset=message_offset,
+                            length=length,
+                            entity=MentionedUser(
+                                user_id=str(user.basic.uid),
+                                user_name=user.basic.nickname,
+                            ),
+                        )
+                    )
+                    mentioned.user_id_list.append(str(user.basic.uid))
+                elif seg.type == "villa_room_link":
+                    # 需要调用API获取房间的名称
+                    room = await self.get_room(
+                        villa_id=seg.data["villa_id"], room_id=seg.data["room_id"]
+                    )
+                    seg_text = f"#{room.room_name} "
+                    length = cal_len(seg_text)
+                    entities.append(
+                        TextEntity(
+                            offset=message_offset,
+                            length=length,
+                            entity=VillaRoomLink(
+                                villa_id=str(seg.data["villa_id"]),
+                                room_id=str(seg.data["room_id"]),
+                                room_name=room.room_name,
+                            ),
+                        )
+                    )
+                elif seg.type == "link":
+                    seg_text = seg.data["show_text"]
+                    length = cal_len(seg_text)
+                    entities.append(
+                        TextEntity(
+                            offset=message_offset,
+                            length=length,
+                            entity=Link(
+                                url=seg.data["url"], show_text=seg.data["show_text"]
+                            ),
+                        )
+                    )
+                message_offset += length
+                message_text += seg_text
+            except Exception as e:
+                log("WARNING", "error when parse message content", e)
 
         # 不能单独只发图片而没有其他文本内容，塞一个零宽度空格
         if images and not message_text:
