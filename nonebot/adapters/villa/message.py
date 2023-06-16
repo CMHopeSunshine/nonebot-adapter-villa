@@ -142,6 +142,18 @@ class MessageSegment(BaseMessageSegment["Message"]):
             {"url": url, "width": width, "height": height, "file_size": file_size},
         )
 
+    @staticmethod
+    def post(post_id: str) -> "PostSegment":
+        """帖子转发消息段
+
+        参数:
+            post_id: 帖子ID
+
+        返回:
+            PostSegment: 消息段对象
+        """
+        return PostSegment("post", {"post_id": post_id})
+
 
 class TextSegment(MessageSegment):
     @overrides(MessageSegment)
@@ -189,6 +201,12 @@ class QuoteSegment(MessageSegment):
     @overrides(MessageSegment)
     def __str__(self) -> str:
         return f"<Quote:msg_id={self.data['msg_id']}>"
+
+
+class PostSegment(MessageSegment):
+    @overrides(MessageSegment)
+    def __str__(self) -> str:
+        return f"<Post:post_id={self.data['post_id']}>"
 
 
 class Message(BaseMessage[MessageSegment]):
