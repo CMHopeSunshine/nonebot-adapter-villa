@@ -67,6 +67,8 @@ VILLA_BOTS='
 
 ## 示例
 
+> 注意，当前大别野只能接收到有@Bot(在哪个位置皆可)的消息事件，且不能有多个@(即使是@两次Bot都不行)
+
 ### 消息段展示
 
 以下是一个简单的插件示例，展示各种消息段：
@@ -99,11 +101,16 @@ async def matcher_handler(bot: Bot, event: SendMessageEvent, cmd_arg: Message = 
             # show_text是指链接显示的文字，但在当前版本Web端大别野会无法正常跳转，最好不使用该参数
         elif arg == "图片":
             msg += MessageSegment.image("https://www.miyoushe.com/_nuxt/img/miHoYo_Game.2457753.png")
-            # 暂时只支持url图片，但在当前版本web端无法显示图片，待官方后续修复
+            # 暂时只支持url图片
+            # 如果在单次消息中，发送多张图片或者与其他消息段拼接，那么将无法在web端显示出来
+            # 所以建议每张图片单独发送
+        elif arg == "帖子":
+            msg += MessageSegment.post("https://www.miyoushe.com/ys/article/40391314")
+            # 帖子消息段只能单独发送，和其他消息段拼接时将被无视
     await matcher.finish(msg)
 ```
 
-使用命令`@bot /发送 艾特我 艾特bot 文字 房间 链接 图片`时，bot会回复`@你的名字 @bot的名字 文字 #房间名 这是链接 图片内容`
+使用命令`@bot /发送 艾特我 艾特bot 文字 房间 链接`时，bot会回复`@你的名字 @bot的名字 文字 #房间名 这是链接`
 
 
 ## 交流和反馈
