@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Union, Literal
+from typing import TYPE_CHECKING, List, Union
 
 from pydantic import parse_obj_as
 from nonebot.drivers import Request
@@ -190,31 +190,6 @@ async def _sort_group_list(
     await _request(adapter, bot, request)
 
 
-async def _create_room(
-    adapter: "Adapter",
-    bot: "Bot",
-    villa_id: int,
-    room_name: str,
-    room_type: Union[Literal[1, 2, 3], CreateRoomType],
-    group_id: int,
-    room_default_notify_type: Union[Literal[1, 2], CreateRoomDefaultNotifyType],
-    send_msg_auth_range: SendMsgAuthRange,
-) -> Room:
-    request = Request(
-        method="POST",
-        url=adapter.base_url / "vila/api/bot/platform/createRoom",
-        headers=bot.get_authorization_header(villa_id),
-        json={
-            "room_name": room_name,
-            "room_type": room_type,
-            "group_id": group_id,
-            "room_default_notify_type": room_default_notify_type,
-            "send_msg_auth_range": send_msg_auth_range.dict(),
-        },
-    )
-    return parse_obj_as(Room, (await _request(adapter, bot, request))["room"])
-
-
 async def _edit_room(
     adapter: "Adapter", bot: "Bot", villa_id: int, room_id: int, room_name: str
 ) -> None:
@@ -345,7 +320,7 @@ async def _get_member_role_info(
         method="GET",
         url=adapter.base_url / "vila/api/bot/platform/getMemberRoleInfo",
         headers=bot.get_authorization_header(villa_id),
-        json={"id": role_id},
+        json={"role_id": role_id},
     )
     return parse_obj_as(
         MemberRoleDetail, (await _request(adapter, bot, request))["role"]
@@ -409,7 +384,6 @@ API_HANDLERS = {
     "delete_group": _delete_group,
     "get_group_list": _get_group_list,
     "sort_group_list": _sort_group_list,
-    "create_room": _create_room,
     "edit_room": _edit_room,
     "delete_room": _delete_room,
     "get_room": _get_room,

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Union, Literal
+from typing import TYPE_CHECKING, List, Union
 
 from .models import *
 
@@ -65,18 +65,6 @@ if TYPE_CHECKING:
             ...
 
         async def sort_group_list(self, *, villa_id: int, group_ids: List[int]) -> None:
-            ...
-
-        async def create_room(
-            self,
-            *,
-            villa_id: int,
-            room_name: str,
-            room_type: Union[Literal[1, 2, 3], CreateRoomType],
-            group_id: int,
-            room_default_notify_type: Union[Literal[1, 2], CreateRoomDefaultNotifyType],
-            send_msg_auth_range: SendMsgAuthRange,
-        ) -> Room:
             ...
 
         async def edit_room(
