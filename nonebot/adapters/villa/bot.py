@@ -24,8 +24,10 @@ from .api import (
     MentionedUser,
     VillaRoomLink,
     MentionedRobot,
-    MessageContent,
     MessageContentInfo,
+    PostMessageContent,
+    TextMessageContent,
+    ImageMessageContent,
 )
 
 if TYPE_CHECKING:
@@ -197,11 +199,16 @@ class Bot(BaseBot, ApiClient):
         if reply_message:
             message += MessageSegment.quote(event.msg_uid, event.send_at)
         content_info = await self.parse_message_content(message)
+        if isinstance(content_info.content, TextMessageContent):
+            object_name = "MHY:Text"
+        elif isinstance(content_info.content, ImageMessageContent):
+            object_name = "MHY:Image"
+        else:
+            object_name = "MHY:Post"
         return await self.send_message(
             villa_id=event.villa_id,
             room_id=event.room_id,
-            object_name="MHY:Text",
-            # object_name="MHY:Image" if content_info.content.images else "MHY:Text",
+            object_name=object_name,
             msg_content=content_info.json(by_alias=True, exclude_none=True),
         )
 
@@ -235,6 +242,10 @@ class Bot(BaseBot, ApiClient):
             ]
         else:
             images = None
+        if posts_msg := (message["post"] or None):
+            post_ids: Optional[List[str]] = [seg.data["post_id"] for seg in posts_msg]
+        else:
+            post_ids = None
         cal_len = lambda x: len(x.encode("utf-16")) // 2 - 1
         message_text = ""
         message_offset = 0
@@ -242,7 +253,7 @@ class Bot(BaseBot, ApiClient):
         mentioned = MentionedInfo(type=MentionType.PART)
         for seg in message:
             try:
-                if seg.type in ("quote", "image"):
+                if seg.type in ("quote", "image", "post"):
                     continue
                 if seg.type == "text":
                     seg_text = seg.data["text"]
@@ -307,7 +318,7 @@ class Bot(BaseBot, ApiClient):
                             ),
                         )
                     )
-                elif seg.type == "link":
+                else:
                     seg_text = seg.data["show_text"]
                     length = cal_len(seg_text)
                     entities.append(
@@ -324,14 +335,26 @@ class Bot(BaseBot, ApiClient):
             except Exception as e:
                 log("WARNING", "error when parse message content", e)
 
-        # 不能单独只发图片而没有其他文本内容，塞一个零宽度空格
-        if images and not message_text:
-            message_text = "\u200B"
-
         if not (mentioned.type == MentionType.ALL and mentioned.user_id_list):
             mentioned = None
+
+        if not (message_text or entities):
+            if images:
+                if len(images) > 1:
+                    content = TextMessageContent(text="\u200B", images=images)
+                else:
+                    content = ImageMessageContent(**images[-1].dict())
+            elif post_ids:
+                content = PostMessageContent(post_id=post_ids[-1])
+            else:
+                raise ValueError("message content is empty")
+        else:
+            content = TextMessageContent(
+                text=message_text, entities=entities, images=images
+            )
+
         return MessageContentInfo(
-            content=MessageContent(text=message_text, entities=entities, images=images),
+            content=content,
             mentionedInfo=mentioned,
             quote=quote,  # type: ignore
         )
