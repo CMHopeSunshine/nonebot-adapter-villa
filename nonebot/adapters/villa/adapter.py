@@ -76,9 +76,18 @@ class Adapter(BaseAdapter):
                     ) is not None:
                         bot = Bot(self, bot_id, payload.robot, bot_secret=bot_secret)
                         self.bot_connect(bot)
-                        log("INFO", f"<y>Bot {escape_tag(bot.self_id)} connected</y>")
+                        log("INFO", f"<y>Bot {bot.self_id} connected</y>")
                     else:
-                        log("WARNING", f"<r>Missing bot secret for bot {bot_id}</r>")
+                        log(
+                            "WARNING",
+                            f"<r>Missing bot secret for bot {bot_id}</r>, event will not be handle",
+                        )
+                        return Response(
+                            200,
+                            content=json.dumps(
+                                {"retcode": 0, "message": "NoneBot2 Get it!"}
+                            ),
+                        )
                 bot = cast(Bot, bot)
                 bot._bot_info = payload.robot
 
@@ -100,7 +109,7 @@ class Adapter(BaseAdapter):
                 else:
                     log(
                         "INFO",
-                        f"Unknown event type: {payload.type} data={payload.extend_data}",
+                        f"Unknown event type: {payload.type} data={escape_tag(str(payload.extend_data))}",
                     )
                 # (Path().cwd() / f'test_event_{payload.created_at}.json').write_text(json.dumps(json_data, indent=4, ensure_ascii=False), encoding='utf-8')
                 return Response(
@@ -113,7 +122,7 @@ class Adapter(BaseAdapter):
     @overrides(BaseAdapter)
     async def _call_api(self, bot: Bot, api: str, **data: Any) -> Any:
         log("DEBUG", f"Calling API <y>{api}</y>")
-        log("TRACE", f"With Data <y>{data}</y>")
+        log("TRACE", f"With Data <y>{escape_tag(str(data))}</y>")
         if (api_handler := API_HANDLERS.get(api)) is None:
             raise ApiNotAvailable(api)
         return await api_handler(self, bot, **data)
