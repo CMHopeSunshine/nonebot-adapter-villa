@@ -2,6 +2,7 @@ import json
 import asyncio
 from typing import Any, cast
 
+from pydantic import parse_obj_as
 from nonebot.typing import overrides
 from nonebot.utils import escape_tag
 from nonebot.drivers import (
@@ -19,9 +20,9 @@ from nonebot.adapters import Adapter as BaseAdapter
 from .bot import Bot
 from .utils import log
 from .config import Config
-from .event import event_classes
-from .api import API_HANDLERS, Payload
+from .api import API_HANDLERS
 from .exception import ApiNotAvailable
+from .event import event_classes, pre_handle_event
 
 
 class Adapter(BaseAdapter):
@@ -61,56 +62,44 @@ class Adapter(BaseAdapter):
         if data := request.content:
             json_data = json.loads(data)
             if payload_data := json_data.get("event"):
-                payload = Payload.parse_obj(payload_data)
-                bot_id = payload.robot.template.id
-                if (bot := self.bots.get(bot_id, None)) is None:
-                    if (
-                        bot_secret := next(
-                            (
-                                bot.bot_secret
-                                for bot in self.villa_config.villa_bots
-                                if bot.bot_id == bot_id
-                            ),
-                            None,
-                        )
-                    ) is not None:
-                        bot = Bot(self, bot_id, payload.robot, bot_secret=bot_secret)
-                        self.bot_connect(bot)
-                        log("INFO", f"<y>Bot {bot.self_id} connected</y>")
-                    else:
-                        log(
-                            "WARNING",
-                            f"<r>Missing bot secret for bot {bot_id}</r>, event will not be handle",
-                        )
-                        return Response(
-                            200,
-                            content=json.dumps(
-                                {"retcode": 0, "message": "NoneBot2 Get it!"}
-                            ),
-                        )
-                bot = cast(Bot, bot)
-                bot._bot_info = payload.robot
-
-                if (event_class := event_classes.get(payload.type, None)) and (
-                    event_class.__type__.name in payload.extend_data["EventData"]
-                ):
-                    try:
-                        event = event_class.parse_obj(
-                            payload.extend_data["EventData"][event_class.__type__.name]
-                        )
-                    except Exception as e:
-                        log(
-                            "WARNING",
-                            f"Failed to parse event {escape_tag(repr(payload))}",
-                            e,
-                        )
-                    else:
-                        asyncio.create_task(bot.handle_event(event))
-                else:
+                try:
+                    event = parse_obj_as(event_classes, pre_handle_event(payload_data))
+                    bot_id = event.bot_id
+                    if (bot := self.bots.get(bot_id, None)) is None:
+                        if (
+                            bot_secret := next(
+                                (
+                                    bot.bot_secret
+                                    for bot in self.villa_config.villa_bots
+                                    if bot.bot_id == bot_id
+                                ),
+                                None,
+                            )
+                        ) is not None:
+                            bot = Bot(self, bot_id, event.robot, bot_secret=bot_secret)
+                            self.bot_connect(bot)
+                            log("INFO", f"<y>Bot {bot.self_id} connected</y>")
+                        else:
+                            log(
+                                "WARNING",
+                                f"<r>Missing bot secret for bot {bot_id}</r>, event will not be handle",
+                            )
+                            return Response(
+                                200,
+                                content=json.dumps(
+                                    {"retcode": 0, "message": "NoneBot2 Get it!"}
+                                ),
+                            )
+                    bot = cast(Bot, bot)
+                    bot._bot_info = event.robot
+                except Exception as e:
                     log(
-                        "INFO",
-                        f"Unknown event type: {payload.type} data={escape_tag(str(payload.extend_data))}",
+                        "WARNING",
+                        f"Failed to parse event {escape_tag(str(payload_data))}",
+                        e,
                     )
+                else:
+                    asyncio.create_task(bot.handle_event(event))
                 # (Path().cwd() / f'test_event_{payload.created_at}.json').write_text(json.dumps(json_data, indent=4, ensure_ascii=False), encoding='utf-8')
                 return Response(
                     200,

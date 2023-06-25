@@ -1,5 +1,6 @@
+import json
 from enum import IntEnum
-from typing import Dict, Type, Optional
+from typing import Any, Dict, Union, Literal, Optional
 
 from pydantic import root_validator
 from nonebot.typing import overrides
@@ -7,7 +8,7 @@ from nonebot.utils import escape_tag
 
 from nonebot.adapters import Event as BaseEvent
 
-from .api import MessageContentInfo
+from .api import Robot, MessageContentInfo
 from .message import Message, MessageSegment
 
 
@@ -36,11 +37,25 @@ class AuditResult(IntEnum):
 class Event(BaseEvent):
     """Villa 事件基类"""
 
-    __type__: EventType
+    robot: Robot
+    """用户机器人访问凭证"""
+    type: EventType
+    """事件类型"""
+    id: str
+    """事件 id"""
+    created_at: int
+    """事件创建时间"""
+    send_at: int
+    """事件回调时间"""
+
+    @property
+    def bot_id(self) -> str:
+        """机器人ID"""
+        return self.robot.template.id
 
     @overrides(BaseEvent)
     def get_event_name(self) -> str:
-        return self.__type__.name
+        return self.type.name
 
     @overrides(BaseEvent)
     def get_event_description(self) -> str:
@@ -86,13 +101,18 @@ class JoinVillaEvent(NoticeEvent):
 
     see https://webstatic.mihoyo.com/vila/bot/doc/callback.html###JoinVilla"""
 
-    __type__ = EventType.JoinVilla
+    type: Literal[EventType.JoinVilla] = EventType.JoinVilla
     join_uid: int
     """用户ID"""
     join_user_nickname: str
     """用户昵称"""
     join_at: int
     """用户加入时间的时间戳"""
+
+    @property
+    def villa_id(self) -> int:
+        """大别野ID"""
+        return self.robot.villa_id
 
     @overrides(BaseEvent)
     def get_user_id(self) -> str:
@@ -108,7 +128,7 @@ class SendMessageEvent(MessageEvent):
 
     see https://webstatic.mihoyo.com/vila/bot/doc/callback.html###SendMessage"""
 
-    __type__ = EventType.SendMessage
+    type: Literal[EventType.SendMessage] = EventType.SendMessage
     content: MessageContentInfo
     """消息内容"""
     from_user_id: int
@@ -126,14 +146,17 @@ class SendMessageEvent(MessageEvent):
     bot_msg_id: Optional[str]
     """如果被回复的消息从属于机器人，则该字段不为空字符串"""
 
-    villa_id: int
-    """大别野ID"""
-    bot_id: str
-    """BotID"""
     to_me: bool = False
     """是否和Bot有关"""
     message: Message
     """事件消息"""
+    raw_message: Message
+    """事件原始消息"""
+
+    @property
+    def villa_id(self) -> int:
+        """大别野ID"""
+        return self.robot.villa_id
 
     @overrides(BaseEvent)
     def get_message(self) -> Message:
@@ -156,8 +179,9 @@ class SendMessageEvent(MessageEvent):
         return f"{self.room_id}-{self.from_user_id}"
 
     @root_validator(pre=True)
-    def _(cls, data: dict):
+    def _(cls, data: Dict[str, Any]):
         msg = Message()
+        data["content"] = json.loads(data["content"])
         msg_content_info = data["content"]
         if quote := msg_content_info.get("quote"):
             msg.append(
@@ -225,6 +249,7 @@ class SendMessageEvent(MessageEvent):
         if last_text := text[(end_offset + 1) * 2 :].decode("utf-16"):
             msg.append(MessageSegment.text(last_text))
         data["message"] = msg
+        data["raw_message"] = msg
         return data
 
 
@@ -233,7 +258,7 @@ class CreateRobotEvent(NoticeEvent):
 
     see https://webstatic.mihoyo.com/vila/bot/doc/callback.html###CreateRobot"""
 
-    __type__ = EventType.CreateRobot
+    type: Literal[EventType.CreateRobot] = EventType.CreateRobot
     villa_id: int
     """大别野ID"""
 
@@ -243,7 +268,7 @@ class DeleteRobotEvent(NoticeEvent):
 
     see https://webstatic.mihoyo.com/vila/bot/doc/callback.html###DeleteRobot"""
 
-    __type__ = EventType.DeleteRobot
+    type: Literal[EventType.DeleteRobot] = EventType.DeleteRobot
     villa_id: int
     """大别野ID"""
 
@@ -253,7 +278,7 @@ class AddQuickEmoticonEvent(NoticeEvent):
 
     see https://webstatic.mihoyo.com/vila/bot/doc/callback.html#AddQuickEmoticon"""
 
-    __type__ = EventType.AddQuickEmoticon
+    type: Literal[EventType.AddQuickEmoticon] = EventType.AddQuickEmoticon
     villa_id: int
     """大别野ID"""
     room_id: int
@@ -277,7 +302,7 @@ class AuditCallbackEvent(NoticeEvent):
 
     see https://webstatic.mihoyo.com/vila/bot/doc/callback.html#AuditCallback"""
 
-    __type__ = EventType.AuditCallback
+    type: Literal[EventType.AuditCallback] = EventType.AuditCallback
     audit_id: str
     """审核事件 id"""
     bot_tpl_id: str
@@ -294,14 +319,28 @@ class AuditCallbackEvent(NoticeEvent):
     """审核结果"""
 
 
-event_classes: Dict[int, Type[Event]] = {
-    EventType.JoinVilla.value: JoinVillaEvent,
-    EventType.SendMessage.value: SendMessageEvent,
-    EventType.CreateRobot.value: CreateRobotEvent,
-    EventType.DeleteRobot.value: DeleteRobotEvent,
-    EventType.AddQuickEmoticon.value: AddQuickEmoticonEvent,
-    EventType.AuditCallback.value: AuditCallbackEvent,
-}
+event_classes = Union[
+    JoinVillaEvent,
+    SendMessageEvent,
+    CreateRobotEvent,
+    DeleteRobotEvent,
+    AddQuickEmoticonEvent,
+    AuditCallbackEvent,
+]
+
+
+def pre_handle_event(payload: Dict[str, Any]):
+    if (event_type := EventType._value2member_map_.get(payload["type"])) is None:
+        raise ValueError(
+            f"Unknown event type: {payload['type']} data={escape_tag(str(payload))}"
+        )
+    event_name = event_type.name
+    if event_name not in payload["extend_data"]["EventData"]:
+        raise ValueError("Cannot find event data for event type: {event_name}")
+    payload |= payload["extend_data"]["EventData"][event_name]
+    payload.pop("extend_data")
+    return payload
+
 
 __all__ = [
     "Event",
