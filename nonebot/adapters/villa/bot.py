@@ -13,13 +13,13 @@ from .api import (
     Link,
     Image,
     Robot,
+    Command,
     ApiClient,
     ImageSize,
     QuoteInfo,
     TextEntity,
     MentionType,
     MentionedAll,
-    RobotCommand,
     MentionedInfo,
     MentionedUser,
     VillaRoomLink,
@@ -123,7 +123,7 @@ class Bot(BaseBot, ApiClient):
         return self._bot_info.template.name
 
     @property
-    def commands(self) -> Optional[List[RobotCommand]]:
+    def commands(self) -> Optional[List[Command]]:
         """Bot 命令预设命令列表"""
         return self._bot_info.template.commands
 
