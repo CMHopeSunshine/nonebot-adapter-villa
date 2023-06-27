@@ -24,7 +24,9 @@ _✨ 大别野 协议适配 ✨_
 
 ## 安装
 
-在`NoneBot2`项目目录下使用脚手架安装：
+在`nb create`创建项目时选择`Villa`适配器
+
+或在现有`NoneBot2`项目目录下使用脚手架安装：
 
 ```
 nb adapter install nonebot-adapter-villa
@@ -46,12 +48,13 @@ DRIVER=~fastapi+~httpx
 
 ### VILLA_BOTS
 
-配置机器人帐号列表，每个bot有3个必填配置，在大别野[官方机器人开发者社区](https://dby.miyoushe.com/chat/463/20020)(别野ID: OpenVilla)申请时获得，
+配置 Bot 帐号列表，每个bot有3个必填配置，可前往大别野[「机器人开发者社区」](https://dby.miyoushe.com/chat/463/20020)(ID: `OpenVilla`)申请，取得以下配置：
 
-- bot_id: 机器人id，以`bot_`开头
-- bot_secret: 机器人密钥
-- callback_url: http回调地址，例如申请bot时给的回调地址是`http://域名/your/callback/url`，那么配置里的`callback_url`填写`/your/callback/url`
-  例如：
+- `bot_id`: 机器人id，以`bot_`开头
+- `bot_secret`: 机器人密钥
+- `callback_url`: http回调地址 endpoint，例如申请bot时给的回调地址是`http://域名/your/callback/url`，那么配置里的`callback_url`填写`/your/callback/url`
+
+例如：
 
 ```dotenv
 VILLA_BOTS='
@@ -113,20 +116,13 @@ async def matcher_handler(bot: Bot, event: SendMessageEvent, cmd_arg: Message = 
 使用命令`@bot /发送 艾特我 艾特bot 文字 房间 链接`时，bot会回复`@你的名字 @bot的名字 文字 #房间名 这是链接`
 
 
-## 交流和反馈
+## 交流、建议和反馈
 
-目前无论是大别野Bot还是本适配器都在测试开发中，如遇问题请提出issue，感谢支持！
+大别野 Bot 和本适配器均为开发测试中，如遇问题请提出 [issue](https://github.com/CMHopeSunshine/nonebot-adapter-villa/issues) ，感谢支持！
 
-也欢迎来我的大别野【尘世闲游】进行交流：
-
-- 大别野ID: wgiJNaU，可搜索加入
-- [Web端链接](https://dby.miyoushe.com/chat/1047/21652)，目前仅PC端可访问
+也欢迎来我的大别野[「尘世闲游」]((https://dby.miyoushe.com/chat/1047/21652))(ID: `wgiJNaU`)进行交流~ 
 
 ## 相关项目
 
 - [NoneBot2](https://github.com/nonebot/nonebot2): 非常好用的Python跨平台机器人框架！
 - [villa-py](https://github.com/CMHopeSunshine/villa-py): 大别野 Bot Python SDK。
-
-推荐有成熟Python开发经验但对NoneBot2不熟悉的小伙伴选择`大别野Bot Python SDK`，
-
-对NoneBot2熟悉或希望接触更成熟的生态的小伙伴选择`NoneBot2+本适配器`进行开发。
