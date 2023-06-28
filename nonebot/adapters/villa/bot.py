@@ -171,7 +171,7 @@ class Bot(BaseBot, ApiClient):
         event: Event,
         message: Union[str, Message, MessageSegment],
         mention_sender: bool = False,
-        reply_message: bool = False,
+        quote_message: bool = False,
         **kwargs: Any,
     ) -> str:
         """发送消息
@@ -180,7 +180,7 @@ class Bot(BaseBot, ApiClient):
             event: 事件
             message: 消息
             mention_sender: 是否@消息发送者. 默认为 False.
-            reply_message: 是否引用原消息. 默认为 False.
+            quote_message: 是否引用原消息. 默认为 False.
 
         异常:
             RuntimeError: 事件不是消息事件时抛出
@@ -196,7 +196,7 @@ class Bot(BaseBot, ApiClient):
             message.insert(
                 0, MessageSegment.mention_user(event.villa_id, event.from_user_id)
             )
-        if reply_message:
+        if quote_message:
             message += MessageSegment.quote(event.msg_uid, event.send_at)
         content_info = await self.parse_message_content(message)
         if isinstance(content_info.content, TextMessageContent):
