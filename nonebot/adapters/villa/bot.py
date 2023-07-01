@@ -105,13 +105,11 @@ class Bot(BaseBot, ApiClient):
     """
 
     @overrides(BaseBot)
-    def __init__(
-        self, adapter: Adapter, self_id: str, bot_info: Robot, bot_secret: str
-    ):
+    def __init__(self, adapter: Adapter, self_id: str, bot_secret: str):
         super().__init__(adapter, self_id)
         self.adapter: Adapter = adapter
         self.bot_secret: str = bot_secret
-        self._bot_info: Robot = bot_info
+        self._bot_info: Optional[Robot] = None
 
     @overrides(BaseBot)
     def __repr__(self) -> str:
@@ -120,25 +118,35 @@ class Bot(BaseBot, ApiClient):
     @property
     def nickname(self) -> str:
         """Bot 昵称"""
+        if not self._bot_info:
+            raise ValueError(f"Bot {self.self_id} hasn't received any events yet.")
         return self._bot_info.template.name
 
     @property
     def commands(self) -> Optional[List[Command]]:
         """Bot 命令预设命令列表"""
+        if not self._bot_info:
+            raise ValueError(f"Bot {self.self_id} hasn't received any events yet.")
         return self._bot_info.template.commands
 
     @property
     def description(self) -> str:
         """Bot 介绍描述"""
+        if not self._bot_info:
+            raise ValueError(f"Bot {self.self_id} hasn't received any events yet.")
         return self._bot_info.template.desc
 
     @property
     def avatar_icon(self) -> str:
         """Bot 头像图标地址"""
+        if not self._bot_info:
+            raise ValueError(f"Bot {self.self_id} hasn't received any events yet.")
         return self._bot_info.template.icon
 
     @property
     def current_villd_id(self) -> int:
+        if not self._bot_info:
+            raise ValueError(f"Bot {self.self_id} hasn't received any events yet.")
         return self._bot_info.villa_id
 
     async def handle_event(self, event: Event):

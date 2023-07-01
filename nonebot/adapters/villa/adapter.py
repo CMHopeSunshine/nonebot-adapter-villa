@@ -50,13 +50,16 @@ class Adapter(BaseAdapter):
                 f"Current driver {self.config.driver} doesn't support connections!"
                 "Villa Adapter need a ReverseDriver and ForwardDriver to work."
             )
-        self._forward_http()
+        self.driver.on_startup(self._forward_http)
         self.driver.on_startup(self._start_forward)
         self.driver.on_shutdown(self._stop_forward)
 
-    def _forward_http(self):
+    async def _forward_http(self):
         for bot_info in self.villa_config.villa_bots:
             if bot_info.callback_url:
+                bot = Bot(self, bot_info.bot_id, bot_info.bot_secret)
+                self.bot_connect(bot)
+                log("INFO", f"<y>Bot {bot.self_id} connected</y>")
                 http_setup = HTTPServerSetup(
                     URL(bot_info.callback_url),
                     "POST",
@@ -83,7 +86,7 @@ class Adapter(BaseAdapter):
                                 None,
                             )
                         ) is not None:
-                            bot = Bot(self, bot_id, event.robot, bot_secret=bot_secret)
+                            bot = Bot(self, bot_id, bot_secret)
                             self.bot_connect(bot)
                             log("INFO", f"<y>Bot {bot.self_id} connected</y>")
                         else:
@@ -117,6 +120,9 @@ class Adapter(BaseAdapter):
     async def _start_forward(self) -> None:
         for bot_info in self.villa_config.villa_bots:
             if bot_info.ws_url:
+                bot = Bot(self, bot_info.bot_id, bot_info.bot_secret)
+                self.bot_connect(bot)
+                log("INFO", f"<y>Bot {bot.self_id} connected</y>")
                 self.tasks.append(
                     asyncio.create_task(
                         self._forward_ws(URL(bot_info.ws_url), bot_info.ws_secret)
@@ -160,7 +166,6 @@ class Adapter(BaseAdapter):
                                             bot = Bot(
                                                 self,
                                                 bot_id,
-                                                event.robot,
                                                 bot_secret=bot_secret,
                                             )
                                             self.bot_connect(bot)
