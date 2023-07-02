@@ -6,12 +6,18 @@ from nonebot.utils import escape_tag
 from nonebot.adapters import Message as BaseMessage
 from nonebot.adapters import MessageSegment as BaseMessageSegment
 
+from .api.models import *
+
 
 class MessageSegment(BaseMessageSegment["Message"]):
     @classmethod
     @overrides(BaseMessageSegment)
     def get_message_class(cls) -> Type["Message"]:
         return Message
+
+    @overrides(BaseMessageSegment)
+    def __repr__(self) -> str:
+        return self.__str__()
 
     @overrides(BaseMessageSegment)
     def __add__(
@@ -53,31 +59,56 @@ class MessageSegment(BaseMessageSegment["Message"]):
             MentionRobotSegement: 消息段对象
         """
         return MentionRobotSegement(
-            "mentioned_robot", {"bot_id": bot_id, "bot_name": bot_name}
+            "mention_robot",
+            {"mention_robot": MentionedRobot(bot_id=bot_id, bot_name=bot_name)},
         )
 
     @staticmethod
-    def mention_user(villa_id: int, user_id: int) -> "MentionUserSegement":
+    def mention_user(
+        user_id: int, user_name: Optional[str] = None, villa_id: Optional[int] = None
+    ) -> "MentionUserSegement":
         """@用户消息段
 
+        user_name和villa_id必须有其中之一
+
         参数:
-            villa_id: 用户所在大别野ID
             user_id: 用户ID
+            user_name: 用户名称
+            villa_id: 用户所在大别野ID
 
         返回:
             MentionUserSegement: 消息段对象
         """
+        if not (user_name or villa_id):
+            raise ValueError("user_name and villa_id must have one of them")
         return MentionUserSegement(
-            "mentioned_user", {"villa_id": villa_id, "user_id": user_id}
+            "mention_user",
+            {
+                "mention_user": MentionedUser(
+                    user_id=str(user_id), user_name=user_name
+                ),
+                "villa_id": villa_id,
+            },
         )
 
     @staticmethod
     def mention_all(show_text: str = "全体成员") -> "MentionAllSegement":
-        """@全体成员消息段"""
-        return MentionAllSegement("mention_all", {"show_text": show_text})
+        """@全体成员消息段
+
+        参数:
+            show_text: 展示文本. 默认为 "全体成员".
+
+        返回:
+            MentionAllSegement: 消息段对象
+        """
+        return MentionAllSegement(
+            "mention_all", {"mention_all": MentionedAll(show_text=show_text)}
+        )
 
     @staticmethod
-    def room_link(villa_id: int, room_id: int) -> "RoomLinkSegment":
+    def room_link(
+        villa_id: int, room_id: int, room_name: Optional[str] = None
+    ) -> "RoomLinkSegment":
         """房间链接消息段，点击后可以跳转到指定房间
 
         参数:
@@ -88,11 +119,20 @@ class MessageSegment(BaseMessageSegment["Message"]):
             VillaRoomLinkSegment: 消息段对象
         """
         return RoomLinkSegment(
-            "villa_room_link", {"villa_id": villa_id, "room_id": room_id}
+            "room_link",
+            {
+                "room_link": VillaRoomLink(
+                    villa_id=str(villa_id), room_id=str(room_id), room_name=room_name
+                )
+            },
         )
 
     @staticmethod
-    def link(url: str, show_text: Optional[str] = None) -> "LinkSegment":
+    def link(
+        url: str,
+        show_text: Optional[str] = None,
+        requires_bot_access_token: bool = False,
+    ) -> "LinkSegment":
         """链接消息段，使用该消息段才能让链接可以直接点击进行跳转
 
         参数:
@@ -102,7 +142,16 @@ class MessageSegment(BaseMessageSegment["Message"]):
         返回:
             LinkSegment: 消息段对象
         """
-        return LinkSegment("link", {"url": url, "show_text": show_text or url})
+        return LinkSegment(
+            "link",
+            {
+                "link": Link(
+                    url=url,
+                    show_text=show_text or url,
+                    requires_bot_access_token=requires_bot_access_token,
+                )
+            },
+        )
 
     @staticmethod
     def quote(message_id: str, message_send_time: int) -> "QuoteSegment":
@@ -116,7 +165,15 @@ class MessageSegment(BaseMessageSegment["Message"]):
             QuoteSegment: 消息段对象
         """
         return QuoteSegment(
-            "quote", {"msg_id": message_id, "msg_send_time": message_send_time}
+            "quote",
+            {
+                "quote": QuoteInfo(
+                    quoted_message_id=message_id,
+                    quoted_message_send_time=message_send_time,
+                    original_message_id=message_id,
+                    original_message_send_time=message_send_time,
+                )
+            },
         )
 
     @staticmethod
@@ -139,7 +196,15 @@ class MessageSegment(BaseMessageSegment["Message"]):
         """
         return ImageSegment(
             "image",
-            {"url": url, "width": width, "height": height, "file_size": file_size},
+            {
+                "image": Image(
+                    url=url,
+                    size=ImageSize(width=width, height=height)
+                    if width and height
+                    else None,
+                    file_size=file_size,
+                )
+            },
         )
 
     @staticmethod
@@ -152,7 +217,73 @@ class MessageSegment(BaseMessageSegment["Message"]):
         返回:
             PostSegment: 消息段对象
         """
-        return PostSegment("post", {"post_id": post_id})
+        return PostSegment("post", {"post": PostMessageContent(post_id=post_id)})
+
+    @staticmethod
+    def preview_link(
+        icon_url: str,
+        image_url: str,
+        is_internal_link: bool,
+        title: str,
+        content: str,
+        url: str,
+        source_name: str,
+    ) -> "PreviewLinkSegment":
+        """预览链接(卡片)消息段
+
+        参数:
+            icon_url: 图标链接
+            image_url: 封面链接
+            is_internal_link: 是否为官方
+            title: 标题
+            content: 内容
+            url: 链接
+            source_name: 来源
+
+        返回:
+            PreviewLinkSegment: 消息段对象
+        """
+        return PreviewLinkSegment(
+            "preview_link",
+            {
+                "preview_link": PreviewLink(
+                    icon_url=icon_url,
+                    image_url=image_url,
+                    is_internal_link=is_internal_link,
+                    title=title,
+                    content=content,
+                    url=url,
+                    source_name=source_name,
+                )
+            },
+        )
+
+    @staticmethod
+    def badge(
+        icon_url: str,
+        text: str,
+        url: str,
+    ) -> "BadgeSegment":
+        """消息下方徽标
+
+        参数:
+            icon_url: 图标链接
+            text: 文本
+            url: 链接
+
+        返回:
+            BadgeSegment: 消息段对象
+        """
+        return BadgeSegment(
+            "badge",
+            {
+                "badge": Badge(
+                    icon_url=icon_url,
+                    text=text,
+                    url=url,
+                )
+            },
+        )
 
 
 class TextSegment(MessageSegment):
@@ -164,49 +295,61 @@ class TextSegment(MessageSegment):
 class MentionRobotSegement(MessageSegment):
     @overrides(MessageSegment)
     def __str__(self) -> str:
-        return f"<MentionRobot:bot_id={self.data['bot_id']} bot_name={self.data['bot_name']}>"
+        return repr(self.data["mention_robot"])
 
 
 class MentionUserSegement(MessageSegment):
     @overrides(MessageSegment)
     def __str__(self) -> str:
-        return f"<MentionUser:user_id={self.data['user_id']}>"
+        return repr(self.data["mention_user"])
 
 
 class MentionAllSegement(MessageSegment):
     @overrides(MessageSegment)
     def __str__(self) -> str:
-        return f"<MentionAll:show_text={self.data['show_text']}>"
+        return repr(self.data["mention_all"])
 
 
 class RoomLinkSegment(MessageSegment):
     @overrides(MessageSegment)
     def __str__(self) -> str:
-        return f"<RoomLink:villa_id={self.data['villa_id']} room_id={self.data['room_id']}>"
+        return repr(self.data["room_link"])
 
 
 class LinkSegment(MessageSegment):
     @overrides(MessageSegment)
     def __str__(self) -> str:
-        return f"Link:url={self.data['url']}"
+        return repr(self.data["link"])
 
 
 class ImageSegment(MessageSegment):
     @overrides(MessageSegment)
     def __str__(self) -> str:
-        return f"<Image:url={self.data['url']}>"
+        return repr(self.data["image"])
 
 
 class QuoteSegment(MessageSegment):
     @overrides(MessageSegment)
     def __str__(self) -> str:
-        return f"<Quote:msg_id={self.data['msg_id']}>"
+        return repr(self.data["quote"])
 
 
 class PostSegment(MessageSegment):
     @overrides(MessageSegment)
     def __str__(self) -> str:
-        return f"<Post:post_id={self.data['post_id']}>"
+        return repr(self.data["post"])
+
+
+class PreviewLinkSegment(MessageSegment):
+    @overrides
+    def __str__(self) -> str:
+        return repr(self.data["preview_link"])
+
+
+class BadgeSegment(MessageSegment):
+    @overrides(MessageSegment)
+    def __str__(self) -> str:
+        return repr(self.data["badge"])
 
 
 class Message(BaseMessage[MessageSegment]):

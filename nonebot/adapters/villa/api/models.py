@@ -2,7 +2,7 @@ import sys
 import json
 import inspect
 from enum import Enum, IntEnum
-from typing import Any, List, Union, Literal, Optional
+from typing import Any, Dict, List, Union, Literal, Optional
 
 from pydantic import Field, BaseModel, validator
 
@@ -98,36 +98,37 @@ class MentionType(IntEnum):
 
 
 class MentionedRobot(BaseModel):
-    type: Literal["mentioned_robot"] = "mentioned_robot"
+    type: Literal["mentioned_robot"] = Field(default="mentioned_robot", repr=False)
     bot_id: str
 
     bot_name: str = Field(exclude=True)
 
 
 class MentionedUser(BaseModel):
-    type: Literal["mentioned_user"] = "mentioned_user"
+    type: Literal["mentioned_user"] = Field(default="mentioned_user", repr=False)
     user_id: str
 
-    user_name: str = Field(exclude=True)
+    user_name: Optional[str] = Field(exclude=True)
 
 
 class MentionedAll(BaseModel):
-    type: Literal["mention_all"] = "mention_all"
+    type: Literal["mention_all"] = Field(default="mention_all", repr=False)
 
     show_text: str = Field(exclude=True)
 
 
 class VillaRoomLink(BaseModel):
-    type: Literal["villa_room_link"] = "villa_room_link"
+    type: Literal["villa_room_link"] = Field(default="villa_room_link", repr=False)
     villa_id: str
     room_id: str
 
-    room_name: str = Field(exclude=True)
+    room_name: Optional[str] = Field(exclude=True)
 
 
 class Link(BaseModel):
-    type: Literal["link"] = "link"
+    type: Literal["link"] = Field(default="link", repr=False)
     url: str
+    requires_bot_access_token: bool
 
     show_text: str = Field(exclude=True)
 
@@ -149,6 +150,22 @@ class Image(BaseModel):
     file_size: Optional[int] = None
 
 
+class PreviewLink(BaseModel):
+    icon_url: str
+    image_url: str
+    is_internal_link: bool
+    title: str
+    content: str
+    url: str
+    source_name: str
+
+
+class Badge(BaseModel):
+    icon_url: str
+    text: str
+    url: str
+
+
 class PostMessageContent(BaseModel):
     post_id: str
 
@@ -164,6 +181,8 @@ class TextMessageContent(BaseModel):
     text: str
     entities: List[TextEntity] = Field(default_factory=list)
     images: Optional[List[Image]] = None
+    preview_link: Optional[PreviewLink] = None
+    badge: Optional[Badge] = None
 
 
 class ImageMessageContent(Image):
@@ -184,7 +203,7 @@ class QuoteInfo(BaseModel):
 
 class User(BaseModel):
     portrait_uri: str = Field(alias="portraitUri")
-    extra: dict
+    extra: Dict[str, Any]
     name: str
     alias: str
     id: str
@@ -203,6 +222,7 @@ class Trace(BaseModel):
     action_type: int
     bot_msg_id: str
     client: str
+    env: str
     rong_sdk_version: str
 
 
@@ -408,6 +428,8 @@ __all__ = [
     "Trace",
     "ImageSize",
     "Image",
+    "PreviewLink",
+    "Badge",
     "MessageContentInfo",
     "Room",
     "RoomType",
