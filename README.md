@@ -68,52 +68,102 @@ VILLA_BOTS='
 '
 ```
 
-## 示例
-
 > 注意，当前大别野只能接收到有@Bot(在哪个位置皆可)的消息事件，且不能有多个@(即使是@两次Bot都不行)
 
-### 消息段展示
+## 已支持消息段
+
+- `MessageSegment.text`: 纯文本
+  + 米游社自带表情也是用text来发送，以[表情名]格式，例如MessageSegment.text("[爱心]")
+- `MessageSegment.mention_robot`: @机器人
+- `MessageSegment.mention_user`: @用户
+- `MessageSegment.mention_all`: @全体成员
+- `MessageSegment.room_link`: #房间跳转链接
+- `MessageSegment.link`: 超链接
+  + 使用link的话链接能够点击进行跳转，使用text的话不能点击
+  + 字段`show_text`是指链接显示的文字，但若指定了该字段，Web端大别野会无法正常跳转
+  + 字段`requires_bot_access_token`为true时，跳转链接会带上含有用户信息的token
+- `MessageSegment.quote`: 引用(回复)消息
+  + 不能**单独**使用，要与其他消息段一起使用
+- `MessageSegment.image`: URL图片
+  + 暂时只支持url图片
+  + 如果在单次消息中，发送多张图片或者与其他消息段拼接，那么将无法在web端显示出来
+- `MessageSegment.post`: 米游社帖子
+  + 只能单独发送，与其他消息段拼接时将会被忽略
+- `MessageSegment.preview_link`: 预览链接(卡片)
+  + 该消息段未在官方文档公开
+- `MessageSegment.badge`: 消息徽标
+  + 该消息段未在官方文档公开
+  + 不能**单独**使用和**单**张图片使用，要与其他消息段一起使用
+
+
 
 以下是一个简单的插件示例，展示各种消息段：
 
 ```python
 from nonebot import on_command
 from nonebot.params import CommandArg
+from nonebot.adapters.villa import MessageSegment, SendMessageEvent, Message
 
-from nonebot.adapters.villa import Bot, SendMessageEvent, Message, MessageSegment
+matcher = on_command("test")
 
-matcher = on_command('发送')
 
 @matcher.handle()
-async def matcher_handler(bot: Bot, event: SendMessageEvent, cmd_arg: Message = CommandArg()):
-    msg = Message()
-    args = cmd_arg.extract_plain_text().strip().split(' ')
-    for arg in args:
-        if arg == "艾特我":
-            msg += MessageSegment.mention_user(event.villa_id, event.from_user_id)
-        elif arg == "艾特bot":
-            msg += MessageSegment.mention_robot(bot.self_id, bot.nickname)
-        elif arg == "文字":
-            msg += MessageSegment.text("文字")
-            # 表情也是用text来发送，以[表情名]格式，例如MessageSegment.text("[爱心]")
-        elif arg == "房间":
-            msg += MessageSegment.room_link(event.villa_id, event.room_id)
-        elif arg == "链接":
-            msg += MessageSegment.link("https://www.miyoushe.com/ys/article/39670307", show_text="这是链接")
-            # 使用link的话链接能够点击进行跳转，使用text的话不能点击
-            # show_text是指链接显示的文字，但在当前版本Web端大别野会无法正常跳转，最好不使用该参数
-        elif arg == "图片":
-            msg += MessageSegment.image("https://www.miyoushe.com/_nuxt/img/miHoYo_Game.2457753.png")
-            # 暂时只支持url图片
-            # 如果在单次消息中，发送多张图片或者与其他消息段拼接，那么将无法在web端显示出来
-            # 所以建议每张图片单独发送
-        elif arg == "帖子":
-            msg += MessageSegment.post("https://www.miyoushe.com/ys/article/40391314")
-            # 帖子消息段只能单独发送，和其他消息段拼接时将被无视
+async def _(event: SendMessageEvent, args: Message = CommandArg()):
+    arg = args.extract_plain_text().strip()
+    if arg == "纯文本":
+        msg = MessageSegment.text(text="这是一段纯文本")
+    elif arg == "艾特bot":
+        msg = MessageSegment.mention_robot(
+            bot_id=event.robot.template.id, bot_name=event.robot.template.name
+        )
+    elif arg == "艾特我":
+        msg = MessageSegment.mention_user(
+            user_id=event.from_user_id, villa_id=event.villa_id
+        )
+    elif arg == "艾特全体":
+        msg = MessageSegment.mention_all()
+    elif arg == "房间链接":
+        msg = MessageSegment.room_link(villa_id=event.villa_id, room_id=event.room_id)
+    elif arg == "超链接":
+        msg = MessageSegment.link(
+            url="https://www.baidu.com", show_text="百度", requires_bot_access_token=False
+        )
+    elif arg == "引用消息":
+        msg = MessageSegment.quote(event.msg_uid, event.send_at) + MessageSegment.text(
+            text="引用原消息"
+        )
+    elif arg == "图片":
+        msg = MessageSegment.image(
+            url="https://www.miyoushe.com/_nuxt/img/miHoYo_Game.2457753.png"
+        )
+    elif arg == "帖子":
+        msg = MessageSegment.post(
+            post_id="https://www.miyoushe.com/ys/article/40391314"
+        )
+    elif arg == "预览链接":
+        msg = MessageSegment.preview_link(
+            icon_url="https://www.bilibili.com/favicon.ico",
+            image_url="https://i2.hdslb.com/bfs/archive/21b82856df6b8a2ae759dddac66e2c79d41fe6bc.jpg@672w_378h_1c_!web-home-common-cover.avif",
+            is_internal_link=False,
+            title="崩坏3第一偶像爱酱",
+            content="「海的女儿」——《崩坏3》S级律者角色「死生之律者」宣传PV",
+            url="https://www.bilibili.com/video/BV1Mh4y1M79t?spm_id_from=333.1007.tianma.2-2-5.click",
+            source_name="哔哩哔哩",
+        )
+    elif arg == "徽标消息":
+        msg = MessageSegment.badge(
+            icon_url="https://upload-bbs.mihoyo.com/vila_bot/bbs_origin_badge.png",
+            text="徽标",
+            url="https://mihoyo.com",
+        ) + MessageSegment.text(text="带有徽标的消息")
+    else:
+        return
+
     await matcher.finish(msg)
+
 ```
 
-使用命令`@bot /发送 艾特我 艾特bot 文字 房间 链接`时，bot会回复`@你的名字 @bot的名字 文字 #房间名 这是链接`
+使用命令`@bot /test 纯文本`时，bot会回复`这是一段纯文本`
 
 
 ## 交流、建议和反馈
