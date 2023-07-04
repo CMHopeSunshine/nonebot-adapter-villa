@@ -7,8 +7,8 @@ from nonebot.internal.adapter.adapter import Adapter
 from nonebot.adapters import Bot as BaseBot
 
 from .utils import log
-from .event import Event, SendMessageEvent
 from .message import Message, MessageSegment
+from .event import Event, SendMessageEvent, AddQuickEmoticonEvent
 from .api import (
     Link,
     Badge,
@@ -55,11 +55,12 @@ def _check_at_me(bot: "Bot", event: SendMessageEvent):
         event: 事件
 
     """
-    if (
-        event.content.mentioned_info
-        and bot.self_id in event.content.mentioned_info.user_id_list
-    ):
-        event.to_me = True
+    # 目前只能收到艾特机器人的消息，所以永远为 True
+    # if (
+    #     event.content.mentioned_info
+    #     and bot.self_id in event.content.mentioned_info.user_id_list
+    # ):
+    #     event.to_me = True
 
     def _is_at_me_seg(segment: MessageSegment) -> bool:
         return (
@@ -197,7 +198,7 @@ class Bot(BaseBot, ApiClient):
         返回:
             str: 消息ID
         """
-        if not isinstance(event, SendMessageEvent):
+        if not isinstance(event, (SendMessageEvent, AddQuickEmoticonEvent)):
             raise RuntimeError("Event cannot be replied to!")
         message = MessageSegment.text(message) if isinstance(message, str) else message
         message = message if isinstance(message, Message) else Message(message)
@@ -205,8 +206,12 @@ class Bot(BaseBot, ApiClient):
             message.insert(
                 0,
                 MessageSegment.mention_user(
-                    user_id=event.from_user_id,
-                    user_name=event.content.user.name if event.content.user else None,
+                    user_id=event.from_user_id
+                    if isinstance(event, SendMessageEvent)
+                    else event.uid,
+                    user_name=event.content.user.name
+                    if isinstance(event, SendMessageEvent)
+                    else None,
                     villa_id=event.villa_id,
                 ),
             )
