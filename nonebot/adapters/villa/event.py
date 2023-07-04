@@ -8,8 +8,8 @@ from nonebot.utils import escape_tag
 
 from nonebot.adapters import Event as BaseEvent
 
-from .api import Robot, MessageContentInfo
 from .message import Message, MessageSegment
+from .api import Robot, MessageContentInfoGet
 
 
 class EventType(IntEnum):
@@ -52,6 +52,11 @@ class Event(BaseEvent):
     def bot_id(self) -> str:
         """机器人ID"""
         return self.robot.template.id
+
+    @property
+    def villa_id(self) -> int:
+        """事件所在大别野ID"""
+        return self.robot.villa_id
 
     @overrides(BaseEvent)
     def get_event_name(self) -> str:
@@ -135,7 +140,7 @@ class SendMessageEvent(MessageEvent):
     see https://webstatic.mihoyo.com/vila/bot/doc/callback.html###SendMessage"""
 
     type: Literal[EventType.SendMessage] = EventType.SendMessage
-    content: MessageContentInfo
+    content: MessageContentInfoGet
     """消息内容"""
     from_user_id: int
     """发送者ID"""
@@ -152,7 +157,7 @@ class SendMessageEvent(MessageEvent):
     bot_msg_id: Optional[str]
     """如果被回复的消息从属于机器人，则该字段不为空字符串"""
 
-    to_me: bool = False
+    to_me: bool = True
     """是否和Bot有关"""
     message: Message
     """事件消息"""
