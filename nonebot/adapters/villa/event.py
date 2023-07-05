@@ -53,11 +53,6 @@ class Event(BaseEvent):
         """机器人ID"""
         return self.robot.template.id
 
-    @property
-    def villa_id(self) -> int:
-        """事件所在大别野ID"""
-        return self.robot.villa_id
-
     @overrides(BaseEvent)
     def get_event_name(self) -> str:
         return self.type.name
