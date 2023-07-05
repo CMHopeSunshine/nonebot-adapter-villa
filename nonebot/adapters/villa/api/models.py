@@ -228,13 +228,13 @@ class Trace(BaseModel):
 
 class MessageContentInfo(BaseModel):
     content: Union[TextMessageContent, ImageMessageContent, PostMessageContent]
-    mentioned_info: Optional[MentionedInfo] = Field(None, alias="mentionedInfo")
+    mentioned_info: Optional[MentionedInfo] = Field(default=None, alias="mentionedInfo")
     quote: Optional[QuoteInfo] = None
 
 
 class MessageContentInfoGet(MessageContentInfo):
     user: User
-    trace: Trace
+    trace: Optional[Trace] = None
 
 
 # 房间部分
