@@ -375,7 +375,7 @@ def pre_handle_event(payload: Dict[str, Any]):
     event_name = event_type.name
     if event_name not in payload["extend_data"]["EventData"]:
         raise ValueError("Cannot find event data for event type: {event_name}")
-    payload |= payload["extend_data"]["EventData"][event_name]
+    payload.update(payload["extend_data"]["EventData"][event_name])
     payload.pop("extend_data")
     return payload
 
