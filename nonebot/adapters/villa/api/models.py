@@ -244,8 +244,8 @@ class Room(BaseModel):
     room_name: str
     room_type: "RoomType"
     group_id: int
-    room_default_notify_type: "RoomDefaultNotifyType"
-    send_msg_auth_range: "SendMsgAuthRange"
+    room_default_notify_type: Optional["RoomDefaultNotifyType"] = None
+    send_msg_auth_range: Optional["SendMsgAuthRange"] = None
 
 
 class RoomType(str, Enum):
@@ -275,7 +275,7 @@ class SendMsgAuthRange(BaseModel):
 class GroupRoom(BaseModel):
     group_id: int
     group_name: str
-    room_list: "ListRoom"
+    room_list: List[Room]
 
 
 class ListRoomType(IntEnum):
@@ -302,13 +302,6 @@ class CreateRoomDefaultNotifyType(IntEnum):
 
     def __repr__(self) -> str:
         return self.name
-
-
-class ListRoom(BaseModel):
-    room_id: int
-    room_name: str
-    room_type: ListRoomType
-    group_id: int
 
 
 class Group(BaseModel):

@@ -228,13 +228,15 @@ async def _get_room(
 
 async def _get_villa_group_room_list(
     adapter: "Adapter", bot: "Bot", villa_id: int
-) -> GroupRoom:
+) -> List[GroupRoom]:
     request = Request(
         method="GET",
         url=adapter.base_url / "vila/api/bot/platform/getVillaGroupRoomList",
         headers=bot.get_authorization_header(villa_id),
     )
-    return parse_obj_as(GroupRoom, (await _request(adapter, bot, request))["list"])
+    return parse_obj_as(
+        List[GroupRoom], (await _request(adapter, bot, request))["list"]
+    )
 
 
 async def _sort_room_list(
