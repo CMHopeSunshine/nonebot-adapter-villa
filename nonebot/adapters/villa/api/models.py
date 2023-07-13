@@ -436,7 +436,6 @@ __all__ = [
     "ListRoomType",
     "CreateRoomType",
     "CreateRoomDefaultNotifyType",
-    "ListRoom",
     "Group",
     "RoomSort",
     "MemberRole",
