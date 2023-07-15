@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, List, Union
 
 from nonebot.drivers import Request
 
@@ -432,7 +432,23 @@ async def _audit(
     return (await _request(adapter, bot, request))["audit_id"]
 
 
-API_HANDLERS = {
+async def _transfer_image(
+    adapter: "Adapter",
+    bot: "Bot",
+    url: str,
+) -> str:
+    request = Request(
+        method="POST",
+        url=adapter.base_url / "vila/api/bot/platform/transferImage",
+        headers=bot.get_authorization_header(),
+        json={
+            "url": url,
+        },
+    )
+    return (await _request(adapter, bot, request))["new_url"]
+
+
+API_HANDLERS: Dict[str, Callable[..., Awaitable[Any]]] = {
     "check_member_bot_access_token": _check_member_bot_access_token,
     "get_villa": _get_villa,
     "get_member": _get_member,
@@ -459,4 +475,5 @@ API_HANDLERS = {
     "get_villa_member_roles": _get_villa_member_roles,
     "get_all_emoticons": _get_all_emoticons,
     "audit": _audit,
+    "transfer_image": _transfer_image,
 }
