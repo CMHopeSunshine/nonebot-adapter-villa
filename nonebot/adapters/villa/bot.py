@@ -179,8 +179,6 @@ class Bot(BaseBot, ApiClient):
         self,
         event: Event,
         message: Union[str, Message, MessageSegment],
-        mention_sender: bool = False,
-        quote_message: bool = False,
         **kwargs: Any,
     ) -> str:
         """发送消息
@@ -201,7 +199,7 @@ class Bot(BaseBot, ApiClient):
             raise RuntimeError("Event cannot be replied to!")
         message = MessageSegment.text(message) if isinstance(message, str) else message
         message = message if isinstance(message, Message) else Message(message)
-        if mention_sender:
+        if kwargs.pop("mention_sender", False) or kwargs.pop("at_sender", False):
             message.insert(
                 0,
                 MessageSegment.mention_user(
@@ -214,15 +212,15 @@ class Bot(BaseBot, ApiClient):
                     villa_id=event.villa_id,
                 ),
             )
-        if quote_message:
+        if kwargs.pop("quote_message", False) or kwargs.pop("reply_message", False):
             message += MessageSegment.quote(event.msg_uid, event.send_at)
         content_info = await self.parse_message_content(message)
-        if isinstance(content_info.content, TextMessageContent):
-            object_name = "MHY:Text"
+        if isinstance(content_info.content, PostMessageContent):
+            object_name = "MHY:Post"
         elif isinstance(content_info.content, ImageMessageContent):
             object_name = "MHY:Image"
         else:
-            object_name = "MHY:Post"
+            object_name = "MHY:Text"
         return await self.send_message(
             villa_id=event.villa_id,
             room_id=event.room_id,
