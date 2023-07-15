@@ -19,6 +19,9 @@ _✨ 大别野 协议适配 ✨_
 <a href="https://wakatime.com/badge/user/eed3f89c-5d65-46e6-ab19-78dcc4b62b3f/project/838e7f55-f8b8-49ff-aec0-29ad264931cf">
   <img src="https://wakatime.com/badge/user/eed3f89c-5d65-46e6-ab19-78dcc4b62b3f/project/838e7f55-f8b8-49ff-aec0-29ad264931cf.svg" alt="wakatime">
 </a>
+<a href="https://github.com/astral-sh/ruff">
+  <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/badge/v2.json" alt="ruff">
+</a>
 
 </div>
 
@@ -68,14 +71,15 @@ VILLA_BOTS='
 '
 ```
 
-> 注意，当前大别野只能接收到有@Bot(在哪个位置皆可)的消息事件，且不能有多个@(即使是@两次Bot都不行)
-
 ## 已支持消息段
+
+> 注意，当前大别野只能接收到有@Bot(在哪个位置皆可)的消息事件，且不能有多个@(即使是@两次Bot都不行)
 
 - `MessageSegment.text`: 纯文本
   + 米游社自带表情也是用text来发送，以[表情名]格式，例如MessageSegment.text("[爱心]")
 - `MessageSegment.mention_robot`: @机器人
 - `MessageSegment.mention_user`: @用户
+  + `user_name`和`villa_id`必须给出其中之一，给`villa_id`时，调用api来获取用户名
 - `MessageSegment.mention_all`: @全体成员
 - `MessageSegment.room_link`: #房间跳转链接
 - `MessageSegment.link`: 超链接
@@ -170,7 +174,7 @@ async def _(event: SendMessageEvent, args: Message = CommandArg()):
 
 大别野 Bot 和本适配器均为开发测试中，如遇问题请提出 [issue](https://github.com/CMHopeSunshine/nonebot-adapter-villa/issues) ，感谢支持！
 
-也欢迎来我的大别野[「尘世闲游」]((https://dby.miyoushe.com/chat/1047/21652))(ID: `wgiJNaU`)进行交流~ 
+也欢迎来我的大别野[「尘世闲游」]((https://dby.miyoushe.com/chat/1047/21652))(ID: `wgiJNaU`)进行交流~
 
 ## 相关项目
 

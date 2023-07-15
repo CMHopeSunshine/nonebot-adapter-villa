@@ -1,29 +1,29 @@
-import json
 import asyncio
+import json
 from typing import Any, List, Optional, cast
 
-from pydantic import parse_obj_as
-from nonebot.typing import overrides
-from nonebot.utils import escape_tag
-from nonebot.exception import WebSocketClosed
+from nonebot.adapters import Adapter as BaseAdapter
 from nonebot.drivers import (
     URL,
     Driver,
+    ForwardDriver,
+    HTTPServerSetup,
     Request,
     Response,
-    ForwardDriver,
     ReverseDriver,
-    HTTPServerSetup,
 )
+from nonebot.exception import WebSocketClosed
+from nonebot.typing import overrides
+from nonebot.utils import escape_tag
 
-from nonebot.adapters import Adapter as BaseAdapter
+from pydantic import parse_obj_as
 
-from .bot import Bot
-from .utils import log
-from .config import Config
 from .api import API_HANDLERS
-from .exception import ApiNotAvailable
+from .bot import Bot
+from .config import Config
 from .event import event_classes, pre_handle_event
+from .exception import ApiNotAvailable
+from .utils import log
 
 
 class Adapter(BaseAdapter):
@@ -48,7 +48,7 @@ class Adapter(BaseAdapter):
         ):
             raise RuntimeError(
                 f"Current driver {self.config.driver} doesn't support connections!"
-                "Villa Adapter need a ReverseDriver and ForwardDriver to work."
+                "Villa Adapter need a ReverseDriver and ForwardDriver to work.",
             )
         self.driver.on_startup(self._forward_http)
         self.driver.on_startup(self._start_forward)
@@ -92,12 +92,13 @@ class Adapter(BaseAdapter):
                         else:
                             log(
                                 "WARNING",
-                                f"<r>Missing bot secret for bot {bot_id}</r>, event will not be handle",
+                                f"<r>Missing bot secret for bot {bot_id}</r>, "
+                                "event will not be handle",
                             )
                             return Response(
                                 200,
                                 content=json.dumps(
-                                    {"retcode": 0, "message": "NoneBot2 Get it!"}
+                                    {"retcode": 0, "message": "NoneBot2 Get it!"},
                                 ),
                             )
                     bot = cast(Bot, bot)
@@ -125,8 +126,8 @@ class Adapter(BaseAdapter):
                 log("INFO", f"<y>Bot {bot.self_id} connected</y>")
                 self.tasks.append(
                     asyncio.create_task(
-                        self._forward_ws(URL(bot_info.ws_url), bot_info.ws_secret)
-                    )
+                        self._forward_ws(URL(bot_info.ws_url), bot_info.ws_secret),
+                    ),
                 )
 
     async def _forward_ws(self, url: URL, secret: Optional[str] = None):
@@ -149,15 +150,16 @@ class Adapter(BaseAdapter):
                             if payload_data := json_data.get("event"):
                                 try:
                                     event = parse_obj_as(
-                                        event_classes, pre_handle_event(payload_data)
+                                        event_classes,
+                                        pre_handle_event(payload_data),
                                     )
                                     bot_id = event.bot_id
-                                    if (bot := self.bots.get(bot_id, None)) is None:  # type: ignore
+                                    if (bot := self.bots.get(bot_id, None)) is None:  # type: ignore  # noqa: E501
                                         if (
                                             bot_secret := next(
                                                 (
                                                     bot.bot_secret
-                                                    for bot in self.villa_config.villa_bots
+                                                    for bot in self.villa_config.villa_bots  # noqa: E501
                                                     if bot.bot_id == bot_id
                                                 ),
                                                 None,
@@ -176,30 +178,32 @@ class Adapter(BaseAdapter):
                                         else:
                                             log(
                                                 "WARNING",
-                                                f"<r>Missing bot secret for bot {bot_id}</r>, event will not be handle",
+                                                "<r>Missing bot secret for bot "
+                                                f"{bot_id}</r>, event won't be handle",
                                             )
                                             await ws.send(
                                                 json.dumps(
                                                     {
                                                         "retcode": 0,
                                                         "message": "NoneBot2 Get it!",
-                                                    }
-                                                )
+                                                    },
+                                                ),
                                             )
                                     bot = cast(Bot, bot)
                                     bot._bot_info = event.robot
                                 except Exception as e:
                                     log(
                                         "WARNING",
-                                        f"Failed to parse event {escape_tag(str(payload_data))}",
+                                        "Failed to parse event "
+                                        f"{escape_tag(str(payload_data))}",
                                         e,
                                     )
                                 else:
                                     asyncio.create_task(bot.handle_event(event))
                                 await ws.send(
                                     json.dumps(
-                                        {"retcode": 0, "message": "NoneBot2 Get it!"}
-                                    )
+                                        {"retcode": 0, "message": "NoneBot2 Get it!"},
+                                    ),
                                 )
                             else:
                                 await ws.send(
@@ -207,8 +211,8 @@ class Adapter(BaseAdapter):
                                         {
                                             "retcode": -100,
                                             "message": "Invalid Request Body",
-                                        }
-                                    )
+                                        },
+                                    ),
                                 )
                     except WebSocketClosed as e:
                         log(
@@ -220,7 +224,7 @@ class Adapter(BaseAdapter):
                         log(
                             "ERROR",
                             "<r><bg #f8bbd0>Error while process data from websocket "
-                            f"{escape_tag(str(url))}. Trying to reconnect...</bg #f8bbd0></r>",
+                            f"{escape_tag(str(url))}. Trying to reconnect...</bg #f8bbd0></r>",  # noqa: E501
                             e,
                         )
                     finally:

@@ -1,13 +1,13 @@
 from typing import Union
 
-from nonebot.permission import Permission
-
+from nonebot.adapters.villa import AddQuickEmoticonEvent, Bot, SendMessageEvent
 from nonebot.adapters.villa.api import RoleType
-from nonebot.adapters.villa import Bot, SendMessageEvent, AddQuickEmoticonEvent
+from nonebot.permission import Permission
 
 
 async def is_owner_or_admin(
-    bot: Bot, event: Union[SendMessageEvent, AddQuickEmoticonEvent]
+    bot: Bot,
+    event: Union[SendMessageEvent, AddQuickEmoticonEvent],
 ) -> bool:
     user_id = event.from_user_id if isinstance(event, SendMessageEvent) else event.uid
     user = await bot.get_member(villa_id=event.villa_id, uid=user_id)
@@ -21,7 +21,8 @@ OWNER_OR_ADMIN = Permission(is_owner_or_admin)
 
 
 async def is_owner(
-    bot: Bot, event: Union[SendMessageEvent, AddQuickEmoticonEvent]
+    bot: Bot,
+    event: Union[SendMessageEvent, AddQuickEmoticonEvent],
 ) -> bool:
     user_id = event.from_user_id if isinstance(event, SendMessageEvent) else event.uid
     user = await bot.get_member(villa_id=event.villa_id, uid=user_id)
@@ -33,7 +34,8 @@ OWNER = Permission(is_owner)
 
 
 async def is_admin(
-    bot: Bot, event: Union[SendMessageEvent, AddQuickEmoticonEvent]
+    bot: Bot,
+    event: Union[SendMessageEvent, AddQuickEmoticonEvent],
 ) -> bool:
     user_id = event.from_user_id if isinstance(event, SendMessageEvent) else event.uid
     user = await bot.get_member(villa_id=event.villa_id, uid=user_id)

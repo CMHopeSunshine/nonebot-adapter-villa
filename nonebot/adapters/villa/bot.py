@@ -1,35 +1,33 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Union, Optional
-
-from nonebot.typing import overrides
-from nonebot.message import handle_event
-from nonebot.internal.adapter.adapter import Adapter
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from nonebot.adapters import Bot as BaseBot
+from nonebot.message import handle_event
+from nonebot.typing import overrides
 
-from .utils import log
-from .message import Message, MessageSegment
-from .event import Event, SendMessageEvent, AddQuickEmoticonEvent
 from .api import (
-    Link,
-    Badge,
-    Image,
-    Robot,
-    Command,
     ApiClient,
-    QuoteInfo,
-    TextEntity,
-    MentionType,
-    PreviewLink,
+    Badge,
+    Command,
+    Image,
+    ImageMessageContent,
+    Link,
     MentionedAll,
     MentionedInfo,
-    MentionedUser,
-    VillaRoomLink,
     MentionedRobot,
+    MentionedUser,
+    MentionType,
     MessageContentInfo,
     PostMessageContent,
+    PreviewLink,
+    QuoteInfo,
+    Robot,
+    TextEntity,
     TextMessageContent,
-    ImageMessageContent,
+    VillaRoomLink,
 )
+from .event import AddQuickEmoticonEvent, Event, SendMessageEvent
+from .message import Message, MessageSegment
+from .utils import log
 
 if TYPE_CHECKING:
     from .adapter import Adapter
@@ -159,7 +157,8 @@ class Bot(BaseBot, ApiClient):
         await handle_event(self, event)
 
     def get_authorization_header(
-        self, villa_id: Optional[int] = None
+        self,
+        villa_id: Optional[int] = None,
     ) -> Dict[str, str]:
         """Bot 鉴权凭证请求头
 
@@ -265,7 +264,9 @@ class Bot(BaseBot, ApiClient):
         else:
             preview_link = None
 
-        cal_len = lambda x: len(x.encode("utf-16")) // 2 - 1
+        def cal_len(x):
+            return len(x.encode("utf-16")) // 2 - 1
+
         message_text = ""
         message_offset = 0
         entities: List[TextEntity] = []
@@ -286,7 +287,7 @@ class Bot(BaseBot, ApiClient):
                             offset=message_offset,
                             length=length,
                             entity=mention_all,
-                        )
+                        ),
                     )
                     mentioned.type = MentionType.ALL
                 elif seg.type == "mention_robot":
@@ -295,8 +296,10 @@ class Bot(BaseBot, ApiClient):
                     length = cal_len(seg_text)
                     entities.append(
                         TextEntity(
-                            offset=message_offset, length=length, entity=mention_robot
-                        )
+                            offset=message_offset,
+                            length=length,
+                            entity=mention_robot,
+                        ),
                     )
                     mentioned.user_id_list.append(mention_robot.bot_id)
                 elif seg.type == "mention_user":
@@ -304,7 +307,8 @@ class Bot(BaseBot, ApiClient):
                     if mention_user.user_name is None:
                         # 需要调用API获取被@的用户的昵称
                         user = await self.get_member(
-                            villa_id=seg.data["villa_id"], uid=int(mention_user.user_id)
+                            villa_id=seg.data["villa_id"],
+                            uid=int(mention_user.user_id),
                         )
                         seg_text = f"@{user.basic.nickname} "
                         mention_user.user_name = user.basic.nickname
@@ -313,8 +317,10 @@ class Bot(BaseBot, ApiClient):
                     length = cal_len(seg_text)
                     entities.append(
                         TextEntity(
-                            offset=message_offset, length=length, entity=mention_user
-                        )
+                            offset=message_offset,
+                            length=length,
+                            entity=mention_user,
+                        ),
                     )
                     mentioned.user_id_list.append(str(mention_user.user_id))
                 elif seg.type == "room_link":
@@ -332,15 +338,17 @@ class Bot(BaseBot, ApiClient):
                     length = cal_len(seg_text)
                     entities.append(
                         TextEntity(
-                            offset=message_offset, length=length, entity=room_link
-                        )
+                            offset=message_offset,
+                            length=length,
+                            entity=room_link,
+                        ),
                     )
                 else:
                     link: Link = seg.data["link"]
                     seg_text = link.show_text
                     length = cal_len(seg_text)
                     entities.append(
-                        TextEntity(offset=message_offset, length=length, entity=link)
+                        TextEntity(offset=message_offset, length=length, entity=link),
                     )
                 message_offset += length
                 message_text += seg_text
@@ -363,7 +371,9 @@ class Bot(BaseBot, ApiClient):
                     content = ImageMessageContent(**images[-1].dict())
             elif preview_link:
                 content = TextMessageContent(
-                    text="\u200B", preview_link=preview_link, badge=badge
+                    text="\u200B",
+                    preview_link=preview_link,
+                    badge=badge,
                 )
             elif post:
                 content = post
