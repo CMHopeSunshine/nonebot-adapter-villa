@@ -116,3 +116,8 @@ class ApiClient:
         room_id: int,
         uid: int,
     ) -> str: ...
+    async def transfer_image(
+        self,
+        *,
+        url: str,
+    ) -> str: ...
