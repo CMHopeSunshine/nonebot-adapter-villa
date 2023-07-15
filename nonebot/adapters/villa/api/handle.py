@@ -1,29 +1,34 @@
 from typing import TYPE_CHECKING, List, Union
 
-from pydantic import parse_obj_as
 from nonebot.drivers import Request
+
+from pydantic import parse_obj_as
 
 from .models import *
 from .request import _request
 
 if TYPE_CHECKING:
-    from ..bot import Bot
     from ..adapter import Adapter
+    from ..bot import Bot
 
 
 async def _check_member_bot_access_token(
-    adapter: "Adapter", bot: "Bot", villa_id: int, token: str
+    adapter: "Adapter",
+    bot: "Bot",
+    villa_id: int,
+    token: str,
 ) -> CheckMemberBotAccessTokenReturn:
     request = Request(
         method="POST",
         url=adapter.base_url / "vila/api/bot/platform/checkMemberBotAccessToken",
         headers=bot.get_authorization_header(
-            villa_id
-        ),  # TODO: 文档中说无需鉴权，但不带header会报错，有待确认
+            villa_id,
+        ),
         json={"token": token},
     )
     return parse_obj_as(
-        CheckMemberBotAccessTokenReturn, await _request(adapter, bot, request)
+        CheckMemberBotAccessTokenReturn,
+        await _request(adapter, bot, request),
     )
 
 
@@ -37,7 +42,10 @@ async def _get_villa(adapter: "Adapter", bot: "Bot", villa_id: int) -> Villa:
 
 
 async def _get_member(
-    adapter: "Adapter", bot: "Bot", villa_id: int, uid: int
+    adapter: "Adapter",
+    bot: "Bot",
+    villa_id: int,
+    uid: int,
 ) -> Member:
     request = Request(
         method="GET",
@@ -49,7 +57,11 @@ async def _get_member(
 
 
 async def _get_villa_members(
-    adapter: "Adapter", bot: "Bot", villa_id: int, offset: int, size: int
+    adapter: "Adapter",
+    bot: "Bot",
+    villa_id: int,
+    offset: int,
+    size: int,
 ) -> MemberListReturn:
     request = Request(
         method="GET",
@@ -61,7 +73,10 @@ async def _get_villa_members(
 
 
 async def _delete_villa_member(
-    adapter: "Adapter", bot: "Bot", villa_id: int, uid: int
+    adapter: "Adapter",
+    bot: "Bot",
+    villa_id: int,
+    uid: int,
 ) -> None:
     request = Request(
         method="POST",
@@ -134,7 +149,10 @@ async def _send_message(
 
 
 async def _create_group(
-    adapter: "Adapter", bot: "Bot", villa_id: int, group_name: str
+    adapter: "Adapter",
+    bot: "Bot",
+    villa_id: int,
+    group_name: str,
 ) -> int:
     request = Request(
         method="POST",
@@ -146,7 +164,11 @@ async def _create_group(
 
 
 async def _edit_group(
-    adapter: "Adapter", bot: "Bot", villa_id: int, group_id: int, group_name: str
+    adapter: "Adapter",
+    bot: "Bot",
+    villa_id: int,
+    group_id: int,
+    group_name: str,
 ) -> None:
     request = Request(
         method="POST",
@@ -158,7 +180,10 @@ async def _edit_group(
 
 
 async def _delete_group(
-    adapter: "Adapter", bot: "Bot", villa_id: int, group_id: int
+    adapter: "Adapter",
+    bot: "Bot",
+    villa_id: int,
+    group_id: int,
 ) -> None:
     request = Request(
         method="POST",
@@ -179,7 +204,10 @@ async def _get_group_list(adapter: "Adapter", bot: "Bot", villa_id: int) -> List
 
 
 async def _sort_group_list(
-    adapter: "Adapter", bot: "Bot", villa_id: int, group_ids: List[int]
+    adapter: "Adapter",
+    bot: "Bot",
+    villa_id: int,
+    group_ids: List[int],
 ) -> None:
     request = Request(
         method="POST",
@@ -191,7 +219,11 @@ async def _sort_group_list(
 
 
 async def _edit_room(
-    adapter: "Adapter", bot: "Bot", villa_id: int, room_id: int, room_name: str
+    adapter: "Adapter",
+    bot: "Bot",
+    villa_id: int,
+    room_id: int,
+    room_name: str,
 ) -> None:
     request = Request(
         method="POST",
@@ -203,7 +235,10 @@ async def _edit_room(
 
 
 async def _delete_room(
-    adapter: "Adapter", bot: "Bot", villa_id: int, room_id: int
+    adapter: "Adapter",
+    bot: "Bot",
+    villa_id: int,
+    room_id: int,
 ) -> None:
     request = Request(
         method="POST",
@@ -215,7 +250,10 @@ async def _delete_room(
 
 
 async def _get_room(
-    adapter: "Adapter", bot: "Bot", villa_id: int, room_id: int
+    adapter: "Adapter",
+    bot: "Bot",
+    villa_id: int,
+    room_id: int,
 ) -> Room:
     request = Request(
         method="GET",
@@ -227,7 +265,9 @@ async def _get_room(
 
 
 async def _get_villa_group_room_list(
-    adapter: "Adapter", bot: "Bot", villa_id: int
+    adapter: "Adapter",
+    bot: "Bot",
+    villa_id: int,
 ) -> List[GroupRoom]:
     request = Request(
         method="GET",
@@ -235,12 +275,16 @@ async def _get_villa_group_room_list(
         headers=bot.get_authorization_header(villa_id),
     )
     return parse_obj_as(
-        List[GroupRoom], (await _request(adapter, bot, request))["list"]
+        List[GroupRoom],
+        (await _request(adapter, bot, request))["list"],
     )
 
 
 async def _sort_room_list(
-    adapter: "Adapter", bot: "Bot", villa_id: int, room_list: List[RoomSort]
+    adapter: "Adapter",
+    bot: "Bot",
+    villa_id: int,
+    room_list: List[RoomSort],
 ) -> None:
     request = Request(
         method="POST",
@@ -252,7 +296,12 @@ async def _sort_room_list(
 
 
 async def _operate_member_to_role(
-    adapter: "Adapter", bot: "Bot", villa_id: int, role_id: int, uid: int, is_add: bool
+    adapter: "Adapter",
+    bot: "Bot",
+    villa_id: int,
+    role_id: int,
+    uid: int,
+    is_add: bool,
 ) -> None:
     request = Request(
         method="POST",
@@ -304,7 +353,10 @@ async def _edit_member_role(
 
 
 async def _delete_member_role(
-    adapter: "Adapter", bot: "Bot", villa_id: int, role_id: int
+    adapter: "Adapter",
+    bot: "Bot",
+    villa_id: int,
+    role_id: int,
 ) -> None:
     request = Request(
         method="POST",
@@ -316,7 +368,10 @@ async def _delete_member_role(
 
 
 async def _get_member_role_info(
-    adapter: "Adapter", bot: "Bot", villa_id: int, role_id: int
+    adapter: "Adapter",
+    bot: "Bot",
+    villa_id: int,
+    role_id: int,
 ) -> MemberRoleDetail:
     request = Request(
         method="GET",
@@ -325,12 +380,15 @@ async def _get_member_role_info(
         json={"role_id": role_id},
     )
     return parse_obj_as(
-        MemberRoleDetail, (await _request(adapter, bot, request))["role"]
+        MemberRoleDetail,
+        (await _request(adapter, bot, request))["role"],
     )
 
 
 async def _get_villa_member_roles(
-    adapter: "Adapter", bot: "Bot", villa_id: int
+    adapter: "Adapter",
+    bot: "Bot",
+    villa_id: int,
 ) -> List[MemberRoleDetail]:
     request = Request(
         method="GET",
@@ -338,13 +396,15 @@ async def _get_villa_member_roles(
         headers=bot.get_authorization_header(villa_id),
     )
     return parse_obj_as(
-        List[MemberRoleDetail], (await _request(adapter, bot, request))["list"]
+        List[MemberRoleDetail],
+        (await _request(adapter, bot, request))["list"],
     )
 
 
 async def _get_all_emoticons(adapter: "Adapter", bot: "Bot") -> List[Emoticon]:
     request = Request(
-        method="GET", url=adapter.base_url / "vila/api/bot/platform/getAllEmoticons"
+        method="GET",
+        url=adapter.base_url / "vila/api/bot/platform/getAllEmoticons",
     )
     return parse_obj_as(List[Emoticon], (await _request(adapter, bot, request))["list"])
 

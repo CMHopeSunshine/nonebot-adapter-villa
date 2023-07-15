@@ -1,10 +1,11 @@
-from typing import Type, Union, Iterable, Optional
+from typing import Iterable, Optional, Type, Union
 
+from nonebot.adapters import (
+    Message as BaseMessage,
+    MessageSegment as BaseMessageSegment,
+)
 from nonebot.typing import overrides
 from nonebot.utils import escape_tag
-
-from nonebot.adapters import Message as BaseMessage
-from nonebot.adapters import MessageSegment as BaseMessageSegment
 
 from .api.models import *
 
@@ -21,13 +22,15 @@ class MessageSegment(BaseMessageSegment["Message"]):
 
     @overrides(BaseMessageSegment)
     def __add__(
-        self, other: Union[str, "MessageSegment", Iterable["MessageSegment"]]
+        self,
+        other: Union[str, "MessageSegment", Iterable["MessageSegment"]],
     ) -> "Message":
         return super().__add__(other)
 
     @overrides(BaseMessageSegment)
     def __radd__(
-        self, other: Union[str, "MessageSegment", Iterable["MessageSegment"]]
+        self,
+        other: Union[str, "MessageSegment", Iterable["MessageSegment"]],
     ) -> "Message":
         return super().__radd__(other)
 
@@ -65,7 +68,9 @@ class MessageSegment(BaseMessageSegment["Message"]):
 
     @staticmethod
     def mention_user(
-        user_id: int, user_name: Optional[str] = None, villa_id: Optional[int] = None
+        user_id: int,
+        user_name: Optional[str] = None,
+        villa_id: Optional[int] = None,
     ) -> "MentionUserSegement":
         """@用户消息段
 
@@ -85,7 +90,8 @@ class MessageSegment(BaseMessageSegment["Message"]):
             "mention_user",
             {
                 "mention_user": MentionedUser(
-                    user_id=str(user_id), user_name=user_name
+                    user_id=str(user_id),
+                    user_name=user_name,
                 ),
                 "villa_id": villa_id,
             },
@@ -102,12 +108,15 @@ class MessageSegment(BaseMessageSegment["Message"]):
             MentionAllSegement: 消息段对象
         """
         return MentionAllSegement(
-            "mention_all", {"mention_all": MentionedAll(show_text=show_text)}
+            "mention_all",
+            {"mention_all": MentionedAll(show_text=show_text)},
         )
 
     @staticmethod
     def room_link(
-        villa_id: int, room_id: int, room_name: Optional[str] = None
+        villa_id: int,
+        room_id: int,
+        room_name: Optional[str] = None,
     ) -> "RoomLinkSegment":
         """房间链接消息段，点击后可以跳转到指定房间
 
@@ -122,8 +131,10 @@ class MessageSegment(BaseMessageSegment["Message"]):
             "room_link",
             {
                 "room_link": VillaRoomLink(
-                    villa_id=str(villa_id), room_id=str(room_id), room_name=room_name
-                )
+                    villa_id=str(villa_id),
+                    room_id=str(room_id),
+                    room_name=room_name,
+                ),
             },
         )
 
@@ -149,7 +160,7 @@ class MessageSegment(BaseMessageSegment["Message"]):
                     url=url,
                     show_text=show_text or url,
                     requires_bot_access_token=requires_bot_access_token,
-                )
+                ),
             },
         )
 
@@ -172,7 +183,7 @@ class MessageSegment(BaseMessageSegment["Message"]):
                     quoted_message_send_time=message_send_time,
                     original_message_id=message_id,
                     original_message_send_time=message_send_time,
-                )
+                ),
             },
         )
 
@@ -203,7 +214,7 @@ class MessageSegment(BaseMessageSegment["Message"]):
                     if width and height
                     else None,
                     file_size=file_size,
-                )
+                ),
             },
         )
 
@@ -254,7 +265,7 @@ class MessageSegment(BaseMessageSegment["Message"]):
                     content=content,
                     url=url,
                     source_name=source_name,
-                )
+                ),
             },
         )
 
@@ -281,7 +292,7 @@ class MessageSegment(BaseMessageSegment["Message"]):
                     icon_url=icon_url,
                     text=text,
                     url=url,
-                )
+                ),
             },
         )
 
@@ -360,18 +371,20 @@ class Message(BaseMessage[MessageSegment]):
 
     @overrides(BaseMessage)
     def __add__(
-        self, other: Union[str, MessageSegment, Iterable[MessageSegment]]
+        self,
+        other: Union[str, MessageSegment, Iterable[MessageSegment]],
     ) -> "Message":
-        return super(Message, self).__add__(
-            MessageSegment.text(other) if isinstance(other, str) else other
+        return super().__add__(
+            MessageSegment.text(other) if isinstance(other, str) else other,
         )
 
     @overrides(BaseMessage)
     def __radd__(
-        self, other: Union[str, MessageSegment, Iterable[MessageSegment]]
+        self,
+        other: Union[str, MessageSegment, Iterable[MessageSegment]],
     ) -> "Message":
-        return super(Message, self).__radd__(
-            MessageSegment.text(other) if isinstance(other, str) else other
+        return super().__radd__(
+            MessageSegment.text(other) if isinstance(other, str) else other,
         )
 
     @staticmethod

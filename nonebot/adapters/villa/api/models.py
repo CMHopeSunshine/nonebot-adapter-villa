@@ -1,10 +1,10 @@
-import sys
-import json
-import inspect
 from enum import Enum, IntEnum
-from typing import Any, Dict, List, Union, Literal, Optional
+import inspect
+import json
+import sys
+from typing import Any, Dict, List, Literal, Optional, Union
 
-from pydantic import Field, BaseModel, validator
+from pydantic import BaseModel, Field, validator
 
 
 class ApiResponse(BaseModel):
@@ -83,7 +83,7 @@ class Member(BaseModel):
 
 
 class MemberListReturn(BaseModel):
-    list: List[Member]
+    list: List[Member]  # noqa: A003
     next_offset: int
 
 
@@ -170,6 +170,7 @@ class PostMessageContent(BaseModel):
     post_id: str
 
     @validator("post_id")
+    @classmethod
     def __deal_post_id(cls, v: str):
         s = v.split("/")[-1]
         if s.isdigit():
@@ -210,6 +211,7 @@ class User(BaseModel):
     portrait: str
 
     @validator("extra", pre=True)
+    @classmethod
     def extra_str_to_dict(cls, v: Any):
         if isinstance(v, str):
             return json.loads(v)
@@ -391,7 +393,7 @@ class Emoticon(BaseModel):
     icon: str
 
 
-for name, obj in inspect.getmembers(sys.modules[__name__]):
+for _, obj in inspect.getmembers(sys.modules[__name__]):
     if inspect.isclass(obj) and issubclass(obj, BaseModel):
         obj.update_forward_refs()
 
