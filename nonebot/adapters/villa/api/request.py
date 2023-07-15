@@ -6,7 +6,15 @@ from nonebot.utils import escape_tag
 from .models import ApiResponse
 from ..exception import (
     ActionFailed,
+    BotNotAdded,
+    InsufficientPermission,
+    InvalidBotAuthInfo,
+    InvalidMemberBotAccessToken,
+    InvalidRequest,
     NetworkError,
+    PermissionDenied,
+    UnknownServerError,
+    UnsupportedMsgType,
     VillaAdapterException,
 )
 from ..utils import log
@@ -26,17 +34,23 @@ async def _request(adapter: "Adapter", bot: "Bot", request: Request) -> Any:
         resp = ApiResponse.parse_raw(data.content)  # type: ignore
         if resp.retcode == 0:
             return resp.data
-        # if data.status_code in (200, 201, 204):
-        #     return_data = data.content and json.loads(data.content)
-
-        # elif data.status_code in (401, 403):
-        #     raise UnauthorizedException(data)
-        # elif data.status_code in (404, 405):
-        #     raise ApiNotAvailable
-        # elif data.status_code == 429:
-        #     raise RateLimitException(data)
-        else:
-            raise ActionFailed(data.status_code, resp)
+        if resp.retcode == -502:
+            raise UnknownServerError(resp)
+        if resp.retcode == -1:
+            raise InvalidRequest(resp)
+        if resp.retcode == 10318001:
+            raise InsufficientPermission(resp)
+        if resp.retcode == 10322002:
+            raise BotNotAdded(resp)
+        if resp.retcode == 10322003:
+            raise PermissionDenied(resp)
+        if resp.retcode == 10322004:
+            raise InvalidMemberBotAccessToken(resp)
+        if resp.retcode == 10322005:
+            raise InvalidBotAuthInfo(resp)
+        if resp.retcode == 10322006:
+            raise UnsupportedMsgType(resp)
+        raise ActionFailed(data.status_code, resp)
     except VillaAdapterException:
         raise
     except Exception as e:
