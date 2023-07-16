@@ -517,5 +517,7 @@ $RECYCLE.BIN/
 
 
 # something development
-/example
-.vscode
+change_role.py
+test*.json
+test_*.py
+example.py
