@@ -59,7 +59,7 @@ class Adapter(BaseAdapter):
     async def _forward_http(self):
         for bot_info in self.villa_config.villa_bots:
             if bot_info.callback_url:
-                bot = Bot(self, bot_info.bot_id, bot_info.bot_secret)
+                bot = Bot(self, bot_info)
                 self.bot_connect(bot)
                 log("INFO", f"<y>Bot {bot.self_id} connected</y>")
                 http_setup = HTTPServerSetup(
@@ -79,16 +79,19 @@ class Adapter(BaseAdapter):
                     bot_id = event.bot_id
                     if (bot := self.bots.get(bot_id, None)) is None:
                         if (
-                            bot_secret := next(
+                            bot_info := next(
                                 (
-                                    bot.bot_secret
+                                    bot
                                     for bot in self.villa_config.villa_bots
                                     if bot.bot_id == bot_id
                                 ),
                                 None,
                             )
                         ) is not None:
-                            bot = Bot(self, bot_id, bot_secret)
+                            bot = Bot(
+                                self,
+                                bot_info,
+                            )
                             self.bot_connect(bot)
                             log("INFO", f"<y>Bot {bot.self_id} connected</y>")
                         else:
@@ -106,6 +109,15 @@ class Adapter(BaseAdapter):
                                 ),
                             )
                     bot = cast(Bot, bot)
+                    if bot.verify_event and (
+                        (bot_sign := request.headers.get("x-rpc-bot_sign")) is None
+                        or not bot._verify_signature(
+                            data.decode() if isinstance(data, bytes) else data,
+                            bot_sign,
+                        )
+                    ):
+                        log("WARNING", f"Received invalid signature {bot_sign}.")
+                        return Response(401, content="Invalid Signature")
                     bot._bot_info = event.robot
                 except Exception as e:
                     log(
@@ -119,13 +131,13 @@ class Adapter(BaseAdapter):
                     200,
                     content=json.dumps({"retcode": 0, "message": "NoneBot2 Get it!"}),
                 )
-            return Response(400, content="Invalid Request Body")
-        return Response(400, content="Invalid Request Body")
+            return Response(415, content="Invalid Request Body")
+        return Response(415, content="Invalid Request Body")
 
     async def _start_forward(self) -> None:
         for bot_info in self.villa_config.villa_bots:
             if bot_info.ws_url:
-                bot = Bot(self, bot_info.bot_id, bot_info.bot_secret)
+                bot = Bot(self, bot_info)
                 self.bot_connect(bot)
                 log("INFO", f"<y>Bot {bot.self_id} connected</y>")
                 self.tasks.append(
@@ -160,9 +172,9 @@ class Adapter(BaseAdapter):
                                     bot_id = event.bot_id
                                     if (bot := self.bots.get(bot_id, None)) is None:  # type: ignore  # noqa: E501
                                         if (
-                                            bot_secret := next(
+                                            bot_info := next(
                                                 (
-                                                    bot.bot_secret
+                                                    bot
                                                     for bot in self.villa_config.villa_bots  # noqa: E501
                                                     if bot.bot_id == bot_id
                                                 ),
@@ -171,8 +183,7 @@ class Adapter(BaseAdapter):
                                         ) is not None:
                                             bot = Bot(
                                                 self,
-                                                bot_id,
-                                                bot_secret=bot_secret,
+                                                bot_info,
                                             )
                                             self.bot_connect(bot)
                                             log(

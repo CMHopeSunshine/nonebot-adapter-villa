@@ -51,11 +51,16 @@ DRIVER=~fastapi+~httpx
 
 ### VILLA_BOTS
 
-配置 Bot 帐号列表，每个bot有3个必填配置，可前往大别野[「机器人开发者社区」](https://dby.miyoushe.com/chat/463/20020)(ID: `OpenVilla`)申请，取得以下配置：
+配置 Bot 帐号列表，每个bot有4个必填配置，可前往[「大别野开放平台」](https://open.miyoushe.com/#/login)(ID: `OpenVilla`)申请，取得以下配置：
 
 - `bot_id`: 机器人id，以`bot_`开头
 - `bot_secret`: 机器人密钥
+- `pub_key`: 加密和验证所需的pub_key
 - `callback_url`: http回调地址 endpoint，例如申请bot时给的回调地址是`http://域名/your/callback/url`，那么配置里的`callback_url`填写`/your/callback/url`
+
+此外还有以下选填配置：
+
+- `verify_event`：是否对回调事件签名进行验证
 
 例如：
 
@@ -65,7 +70,9 @@ VILLA_BOTS='
   {
     "bot_id": "bot_123456789",
     "bot_secret": "abc123def456",
-    "callback_url": "/your/callback/url"
+    "pub_key": "-----BEGIN PUBLIC KEY-----\nyour_pub_key\n-----END PUBLIC KEY-----\n",
+    "callback_url": "/your/callback/url",
+    "verify_event": true
   }
 ]
 '

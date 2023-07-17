@@ -15,6 +15,7 @@ packages = [{ include = "nonebot" }]
 [tool.poetry.dependencies]
 python = "^3.8"
 nonebot2 = "^2.0.0"
+rsa = "^4.9"
 
 
 [tool.poetry.group.dev.dependencies]
