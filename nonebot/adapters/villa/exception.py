@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from nonebot.exception import (
     ActionFailed as BaseActionFailed,
@@ -8,7 +8,8 @@ from nonebot.exception import (
     NoLogException as BaseNoLogException,
 )
 
-from .api import ApiResponse
+if TYPE_CHECKING:
+    from .api import ApiResponse
 
 
 class VillaAdapterException(AdapterException):
@@ -21,7 +22,7 @@ class NoLogException(BaseNoLogException, VillaAdapterException):
 
 
 class ActionFailed(BaseActionFailed, VillaAdapterException):
-    def __init__(self, status_code: int, response: ApiResponse):
+    def __init__(self, status_code: int, response: "ApiResponse"):
         self.status_code = status_code
         self.response = response
 
@@ -38,42 +39,42 @@ class ActionFailed(BaseActionFailed, VillaAdapterException):
 
 
 class UnknownServerError(ActionFailed):
-    def __init__(self, response: ApiResponse):
+    def __init__(self, response: "ApiResponse"):
         super().__init__(-502, response)
 
 
 class InvalidRequest(ActionFailed):
-    def __init__(self, response: ApiResponse):
+    def __init__(self, response: "ApiResponse"):
         super().__init__(-1, response)
 
 
 class InsufficientPermission(ActionFailed):
-    def __init__(self, response: ApiResponse):
+    def __init__(self, response: "ApiResponse"):
         super().__init__(10318001, response)
 
 
 class BotNotAdded(ActionFailed):
-    def __init__(self, response: ApiResponse):
+    def __init__(self, response: "ApiResponse"):
         super().__init__(10322002, response)
 
 
 class PermissionDenied(ActionFailed):
-    def __init__(self, response: ApiResponse):
+    def __init__(self, response: "ApiResponse"):
         super().__init__(10322003, response)
 
 
 class InvalidMemberBotAccessToken(ActionFailed):
-    def __init__(self, response: ApiResponse):
+    def __init__(self, response: "ApiResponse"):
         super().__init__(10322004, response)
 
 
 class InvalidBotAuthInfo(ActionFailed):
-    def __init__(self, response: ApiResponse):
+    def __init__(self, response: "ApiResponse"):
         super().__init__(10322005, response)
 
 
 class UnsupportedMsgType(ActionFailed):
-    def __init__(self, response: ApiResponse):
+    def __init__(self, response: "ApiResponse"):
         super().__init__(10322006, response)
 
 

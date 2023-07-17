@@ -1,8 +1,14 @@
+import base64
+import hashlib
+import hmac
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from typing_extensions import override
+from urllib.parse import urlencode
 
 from nonebot.adapters import Bot as BaseBot
 from nonebot.message import handle_event
+
+import rsa
 
 from .api import (
     ApiClient,
@@ -25,6 +31,7 @@ from .api import (
     TextMessageContent,
     VillaRoomLink,
 )
+from .config import BotInfo
 from .event import AddQuickEmoticonEvent, Event, SendMessageEvent
 from .message import Message, MessageSegment
 from .utils import log
@@ -105,10 +112,21 @@ class Bot(BaseBot, ApiClient):
     """
 
     @override
-    def __init__(self, adapter: Adapter, self_id: str, bot_secret: str):
-        super().__init__(adapter, self_id)
+    def __init__(
+        self,
+        adapter: "Adapter",
+        bot_info: BotInfo,
+    ) -> None:
+        super().__init__(adapter, bot_info.bot_id)
         self.adapter: Adapter = adapter
-        self.bot_secret: str = bot_secret
+        self.bot_secret: str = bot_info.bot_secret
+        self.bot_secret_encrypt = hmac.new(
+            bot_info.pub_key.encode(),
+            bot_info.bot_secret.encode(),
+            hashlib.sha256,
+        ).hexdigest()
+        self.pub_key = rsa.PublicKey.load_pkcs1_openssl_pem(bot_info.pub_key.encode())
+        self.verify_event = bot_info.verify_event
         self._bot_info: Optional[Robot] = None
 
     @override
@@ -156,6 +174,21 @@ class Bot(BaseBot, ApiClient):
             # await _check_reply(self, event)
         await handle_event(self, event)
 
+    def _verify_signature(
+        self,
+        body: str,
+        bot_sign: str,
+    ):
+        sign = base64.b64decode(bot_sign)
+        sign_data = urlencode(
+            {"body": body.rstrip("\n"), "secret": self.bot_secret},
+        ).encode()
+        try:
+            rsa.verify(sign_data, sign, self.pub_key)
+        except rsa.VerificationError:
+            return False
+        return True
+
     def get_authorization_header(
         self,
         villa_id: Optional[int] = None,
@@ -170,7 +203,7 @@ class Bot(BaseBot, ApiClient):
         """
         return {
             "x-rpc-bot_id": self.self_id,
-            "x-rpc-bot_secret": self.bot_secret,
+            "x-rpc-bot_secret": self.bot_secret_encrypt,
             "x-rpc-bot_villa_id": str(villa_id or ""),
         }
 
