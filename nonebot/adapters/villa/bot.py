@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing_extensions import override
 
 from nonebot.adapters import Bot as BaseBot
 from nonebot.message import handle_event
-from nonebot.typing import overrides
 
 from .api import (
     ApiClient,
@@ -104,14 +104,14 @@ class Bot(BaseBot, ApiClient):
     大别野协议 Bot 适配。
     """
 
-    @overrides(BaseBot)
+    @override
     def __init__(self, adapter: Adapter, self_id: str, bot_secret: str):
         super().__init__(adapter, self_id)
         self.adapter: Adapter = adapter
         self.bot_secret: str = bot_secret
         self._bot_info: Optional[Robot] = None
 
-    @overrides(BaseBot)
+    @override
     def __repr__(self) -> str:
         return f"Bot(type={self.type!r}, self_id={self.self_id!r})"
 
@@ -174,7 +174,7 @@ class Bot(BaseBot, ApiClient):
             "x-rpc-bot_villa_id": str(villa_id or ""),
         }
 
-    @overrides(BaseBot)
+    @override
     async def send(
         self,
         event: Event,
@@ -203,12 +203,16 @@ class Bot(BaseBot, ApiClient):
             message.insert(
                 0,
                 MessageSegment.mention_user(
-                    user_id=event.from_user_id
-                    if isinstance(event, SendMessageEvent)
-                    else event.uid,
-                    user_name=event.content.user.name
-                    if isinstance(event, SendMessageEvent)
-                    else None,
+                    user_id=(
+                        event.from_user_id
+                        if isinstance(event, SendMessageEvent)
+                        else event.uid
+                    ),
+                    user_name=(
+                        event.content.user.name
+                        if isinstance(event, SendMessageEvent)
+                        else None
+                    ),
                     villa_id=event.villa_id,
                 ),
             )
@@ -360,7 +364,7 @@ class Bot(BaseBot, ApiClient):
             if images:
                 if len(images) > 1:
                     content = TextMessageContent(
-                        text="\u200B",
+                        text="\u200b",
                         images=images,
                         preview_link=preview_link,
                         badge=badge,
@@ -369,7 +373,7 @@ class Bot(BaseBot, ApiClient):
                     content = ImageMessageContent(**images[-1].dict())
             elif preview_link:
                 content = TextMessageContent(
-                    text="\u200B",
+                    text="\u200b",
                     preview_link=preview_link,
                     badge=badge,
                 )

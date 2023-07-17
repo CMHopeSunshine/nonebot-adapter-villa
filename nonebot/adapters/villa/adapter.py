@@ -1,6 +1,7 @@
 import asyncio
 import json
 from typing import Any, List, Optional, cast
+from typing_extensions import override
 
 from nonebot.adapters import Adapter as BaseAdapter
 from nonebot.drivers import (
@@ -13,7 +14,6 @@ from nonebot.drivers import (
     ReverseDriver,
 )
 from nonebot.exception import WebSocketClosed
-from nonebot.typing import overrides
 from nonebot.utils import escape_tag
 
 from pydantic import parse_obj_as
@@ -27,7 +27,7 @@ from .utils import log
 
 
 class Adapter(BaseAdapter):
-    @overrides(BaseAdapter)
+    @override
     def __init__(self, driver: Driver, **kwargs: Any):
         super().__init__(driver, **kwargs)
         self.villa_config: Config = Config(**self.config.dict())
@@ -36,7 +36,7 @@ class Adapter(BaseAdapter):
         self._setup()
 
     @classmethod
-    @overrides(BaseAdapter)
+    @override
     def get_name(cls) -> str:
         return "大别野"
 
@@ -47,8 +47,10 @@ class Adapter(BaseAdapter):
             and isinstance(self.driver, ForwardDriver)
         ):
             raise RuntimeError(
-                f"Current driver {self.config.driver} doesn't support connections!"
-                "Villa Adapter need a ReverseDriver and ForwardDriver to work.",
+                (
+                    f"Current driver {self.config.driver} doesn't support connections!"
+                    "Villa Adapter need a ReverseDriver and ForwardDriver to work."
+                ),
             )
         self.driver.on_startup(self._forward_http)
         self.driver.on_startup(self._start_forward)
@@ -92,8 +94,10 @@ class Adapter(BaseAdapter):
                         else:
                             log(
                                 "WARNING",
-                                f"<r>Missing bot secret for bot {bot_id}</r>, "
-                                "event will not be handle",
+                                (
+                                    f"<r>Missing bot secret for bot {bot_id}</r>, "
+                                    "event will not be handle"
+                                ),
                             )
                             return Response(
                                 200,
@@ -178,8 +182,11 @@ class Adapter(BaseAdapter):
                                         else:
                                             log(
                                                 "WARNING",
-                                                "<r>Missing bot secret for bot "
-                                                f"{bot_id}</r>, event won't be handle",
+                                                (
+                                                    "<r>Missing bot secret for bot"
+                                                    f" {bot_id}</r>, event won't be"
+                                                    " handle"
+                                                ),
                                             )
                                             await ws.send(
                                                 json.dumps(
@@ -194,8 +201,10 @@ class Adapter(BaseAdapter):
                                 except Exception as e:
                                     log(
                                         "WARNING",
-                                        "Failed to parse event "
-                                        f"{escape_tag(str(payload_data))}",
+                                        (
+                                            "Failed to parse event "
+                                            f"{escape_tag(str(payload_data))}"
+                                        ),
                                         e,
                                     )
                                 else:
@@ -223,8 +232,11 @@ class Adapter(BaseAdapter):
                     except Exception as e:
                         log(
                             "ERROR",
-                            "<r><bg #f8bbd0>Error while process data from websocket "
-                            f"{escape_tag(str(url))}. Trying to reconnect...</bg #f8bbd0></r>",  # noqa: E501
+                            (  # noqa: E501
+                                "<r><bg #f8bbd0>Error while process data from"
+                                f" websocket {escape_tag(str(url))}. Trying to"
+                                " reconnect...</bg #f8bbd0></r>"
+                            ),
                             e,
                         )
                     finally:
@@ -233,8 +245,11 @@ class Adapter(BaseAdapter):
             except Exception as e:
                 log(
                     "ERROR",
-                    "<r><bg #f8bbd0>Error while setup websocket to "
-                    f"{escape_tag(str(url))}. Trying to reconnect...</bg #f8bbd0></r>",
+                    (
+                        "<r><bg #f8bbd0>Error while setup websocket to"
+                        f" {escape_tag(str(url))}. Trying to reconnect...</bg"
+                        " #f8bbd0></r>"
+                    ),
                     e,
                 )
                 await asyncio.sleep(3.0)
@@ -244,7 +259,7 @@ class Adapter(BaseAdapter):
             if not task.done():
                 task.cancel()
 
-    @overrides(BaseAdapter)
+    @override
     async def _call_api(self, bot: Bot, api: str, **data: Any) -> Any:
         log("DEBUG", f"Calling API <y>{api}</y>")
         log("TRACE", f"With Data <y>{escape_tag(str(data))}</y>")

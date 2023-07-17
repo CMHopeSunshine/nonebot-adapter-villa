@@ -1,9 +1,9 @@
 from enum import IntEnum
 import json
 from typing import Any, Dict, Literal, Optional, Union
+from typing_extensions import override
 
 from nonebot.adapters import Event as BaseEvent
-from nonebot.typing import overrides
 from nonebot.utils import escape_tag
 
 from pydantic import root_validator
@@ -53,27 +53,27 @@ class Event(BaseEvent):
         """机器人ID"""
         return self.robot.template.id
 
-    @overrides(BaseEvent)
+    @override
     def get_event_name(self) -> str:
         return self.type.name
 
-    @overrides(BaseEvent)
+    @override
     def get_event_description(self) -> str:
         return escape_tag(repr(self.dict()))
 
-    @overrides(BaseEvent)
+    @override
     def get_message(self):
         raise ValueError("Event has no message!")
 
-    @overrides(BaseEvent)
+    @override
     def get_user_id(self) -> str:
         raise ValueError("Event has no context!")
 
-    @overrides(BaseEvent)
+    @override
     def get_session_id(self) -> str:
         raise ValueError("Event has no context!")
 
-    @overrides(BaseEvent)
+    @override
     def is_tome(self) -> bool:
         return False
 
@@ -81,7 +81,7 @@ class Event(BaseEvent):
 class NoticeEvent(Event):
     """通知事件"""
 
-    @overrides(BaseEvent)
+    @override
     def get_type(self) -> str:
         return "notice"
 
@@ -91,7 +91,7 @@ class MessageEvent(Event):
 
     但目前大别野只有SendMessageEvent这一种消息事件，所以推荐直接使用SendMessageEvent"""
 
-    @overrides(BaseEvent)
+    @override
     def get_type(self) -> str:
         return "message"
 
@@ -114,18 +114,20 @@ class JoinVillaEvent(NoticeEvent):
         """大别野ID"""
         return self.robot.villa_id
 
-    @overrides(BaseEvent)
+    @override
     def get_event_description(self) -> str:
         return escape_tag(
-            f"User(nickname={self.join_user_nickname},id={self.join_uid}) "
-            f"join Villa(id={self.villa_id})",
+            (
+                f"User(nickname={self.join_user_nickname},id={self.join_uid}) "
+                f"join Villa(id={self.villa_id})"
+            ),
         )
 
-    @overrides(BaseEvent)
+    @override
     def get_user_id(self) -> str:
         return str(self.join_uid)
 
-    @overrides(BaseEvent)
+    @override
     def get_session_id(self) -> str:
         return str(self.join_uid)
 
@@ -165,30 +167,33 @@ class SendMessageEvent(MessageEvent):
         """大别野ID"""
         return self.robot.villa_id
 
-    @overrides(BaseEvent)
+    @override
     def get_event_description(self) -> str:
         return escape_tag(
-            f"Message(id={self.msg_uid}) was sent from User(nickname={self.nickname}, "
-            f"id={self.from_user_id}) in Room(id={self.room_id}) "
-            f"of Villa(id={self.villa_id}), content={repr(self.message)}",
+            (
+                f"Message(id={self.msg_uid}) was sent from"
+                f" User(nickname={self.nickname}, id={self.from_user_id}) in"
+                f" Room(id={self.room_id}) of Villa(id={self.villa_id}),"
+                f" content={repr(self.message)}"
+            ),
         )
 
-    @overrides(BaseEvent)
+    @override
     def get_message(self) -> Message:
         """获取事件消息"""
         return self.message
 
-    @overrides(Event)
+    @override
     def is_tome(self) -> bool:
         """是否和Bot有关"""
         return self.to_me
 
-    @overrides(BaseEvent)
+    @override
     def get_user_id(self) -> str:
         """获取用户ID"""
         return str(self.from_user_id)
 
-    @overrides(BaseEvent)
+    @override
     def get_session_id(self) -> str:
         """获取会话ID"""
         return f"{self.room_id}-{self.from_user_id}"
@@ -282,7 +287,7 @@ class CreateRobotEvent(NoticeEvent):
     villa_id: int
     """大别野ID"""
 
-    @overrides(BaseEvent)
+    @override
     def get_event_description(self) -> str:
         return escape_tag(
             f"Bot(id={self.bot_id}) was added to Villa(id={self.villa_id})",
@@ -298,7 +303,7 @@ class DeleteRobotEvent(NoticeEvent):
     villa_id: int
     """大别野ID"""
 
-    @overrides(BaseEvent)
+    @override
     def get_event_description(self) -> str:
         return escape_tag(
             f"Bot(id={self.bot_id}) was removed from Villa(id={self.villa_id})",
@@ -328,13 +333,15 @@ class AddQuickEmoticonEvent(NoticeEvent):
     is_cancel: bool = False
     """是否是取消表情"""
 
-    @overrides(BaseEvent)
+    @override
     def get_event_description(self) -> str:
         return escape_tag(
-            f"Emoticon(name={self.emoticon}, id={self.emoticon_id}) was "
-            f"{'removed from' if self.is_cancel else 'added to'} "
-            f"Message(id={self.msg_uid}) by User(id={self.uid}) in "
-            f"Room(id=Villa(id={self.room_id}) of Villa(id={self.villa_id})",
+            (
+                f"Emoticon(name={self.emoticon}, id={self.emoticon_id}) was "
+                f"{'removed from' if self.is_cancel else 'added to'} "
+                f"Message(id={self.msg_uid}) by User(id={self.uid}) in "
+                f"Room(id=Villa(id={self.room_id}) of Villa(id={self.villa_id})"
+            ),
         )
 
 
@@ -359,12 +366,14 @@ class AuditCallbackEvent(NoticeEvent):
     audit_result: AuditResult
     """审核结果"""
 
-    @overrides(BaseEvent)
+    @override
     def get_event_description(self) -> str:
         return escape_tag(
-            f"Audit(id={self.audit_id},result={self.audit_result}) of "
-            f"User(id={self.user_id}) in Room(id={self.room_id}) of "
-            f"Villa(id={self.villa_id})",
+            (
+                f"Audit(id={self.audit_id},result={self.audit_result}) of "
+                f"User(id={self.user_id}) in Room(id={self.room_id}) of "
+                f"Villa(id={self.villa_id})"
+            ),
         )
 
 
