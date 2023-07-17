@@ -1,10 +1,10 @@
 from typing import Iterable, Optional, Type, Union
+from typing_extensions import override
 
 from nonebot.adapters import (
     Message as BaseMessage,
     MessageSegment as BaseMessageSegment,
 )
-from nonebot.typing import overrides
 from nonebot.utils import escape_tag
 
 from .api.models import *
@@ -12,29 +12,29 @@ from .api.models import *
 
 class MessageSegment(BaseMessageSegment["Message"]):
     @classmethod
-    @overrides(BaseMessageSegment)
+    @override
     def get_message_class(cls) -> Type["Message"]:
         return Message
 
-    @overrides(BaseMessageSegment)
+    @override
     def __repr__(self) -> str:
         return self.__str__()
 
-    @overrides(BaseMessageSegment)
+    @override
     def __add__(
         self,
         other: Union[str, "MessageSegment", Iterable["MessageSegment"]],
     ) -> "Message":
         return super().__add__(other)
 
-    @overrides(BaseMessageSegment)
+    @override
     def __radd__(
         self,
         other: Union[str, "MessageSegment", Iterable["MessageSegment"]],
     ) -> "Message":
         return super().__radd__(other)
 
-    @overrides(BaseMessageSegment)
+    @override
     def is_text(self) -> bool:
         return self.type == "text"
 
@@ -210,9 +210,11 @@ class MessageSegment(BaseMessageSegment["Message"]):
             {
                 "image": Image(
                     url=url,
-                    size=ImageSize(width=width, height=height)
-                    if width and height
-                    else None,
+                    size=(
+                        ImageSize(width=width, height=height)
+                        if width and height
+                        else None
+                    ),
                     file_size=file_size,
                 ),
             },
@@ -298,78 +300,78 @@ class MessageSegment(BaseMessageSegment["Message"]):
 
 
 class TextSegment(MessageSegment):
-    @overrides(MessageSegment)
+    @override
     def __str__(self) -> str:
         return escape_tag(self.data["text"])
 
 
 class MentionRobotSegement(MessageSegment):
-    @overrides(MessageSegment)
+    @override
     def __str__(self) -> str:
         return repr(self.data["mention_robot"])
 
 
 class MentionUserSegement(MessageSegment):
-    @overrides(MessageSegment)
+    @override
     def __str__(self) -> str:
         return repr(self.data["mention_user"])
 
 
 class MentionAllSegement(MessageSegment):
-    @overrides(MessageSegment)
+    @override
     def __str__(self) -> str:
         return repr(self.data["mention_all"])
 
 
 class RoomLinkSegment(MessageSegment):
-    @overrides(MessageSegment)
+    @override
     def __str__(self) -> str:
         return repr(self.data["room_link"])
 
 
 class LinkSegment(MessageSegment):
-    @overrides(MessageSegment)
+    @override
     def __str__(self) -> str:
         return repr(self.data["link"])
 
 
 class ImageSegment(MessageSegment):
-    @overrides(MessageSegment)
+    @override
     def __str__(self) -> str:
         return repr(self.data["image"])
 
 
 class QuoteSegment(MessageSegment):
-    @overrides(MessageSegment)
+    @override
     def __str__(self) -> str:
         return repr(self.data["quote"])
 
 
 class PostSegment(MessageSegment):
-    @overrides(MessageSegment)
+    @override
     def __str__(self) -> str:
         return repr(self.data["post"])
 
 
 class PreviewLinkSegment(MessageSegment):
-    @overrides
+    @override
     def __str__(self) -> str:
         return repr(self.data["preview_link"])
 
 
 class BadgeSegment(MessageSegment):
-    @overrides(MessageSegment)
+    @override
     def __str__(self) -> str:
         return repr(self.data["badge"])
 
 
 class Message(BaseMessage[MessageSegment]):
     @classmethod
-    @overrides(BaseMessage)
+    @override
     def get_segment_class(cls) -> Type[MessageSegment]:
         return MessageSegment
 
-    @overrides(BaseMessage)
+    @override
     def __add__(
         self,
         other: Union[str, MessageSegment, Iterable[MessageSegment]],
@@ -378,7 +380,7 @@ class Message(BaseMessage[MessageSegment]):
             MessageSegment.text(other) if isinstance(other, str) else other,
         )
 
-    @overrides(BaseMessage)
+    @override
     def __radd__(
         self,
         other: Union[str, MessageSegment, Iterable[MessageSegment]],
@@ -388,6 +390,6 @@ class Message(BaseMessage[MessageSegment]):
         )
 
     @staticmethod
-    @overrides(BaseMessage)
+    @override
     def _construct(msg: str) -> Iterable[MessageSegment]:
         yield MessageSegment.text(msg)
