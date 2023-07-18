@@ -15,6 +15,7 @@ class BotInfo(BaseModel):
     @validator("pub_key")
     @classmethod
     def format_pub_key(cls, v: str):
+        v = v.strip()
         if v.startswith("-----BEGIN PUBLIC KEY-----"):
             v = v[26:]
         if v.endswith("-----END PUBLIC KEY-----"):
