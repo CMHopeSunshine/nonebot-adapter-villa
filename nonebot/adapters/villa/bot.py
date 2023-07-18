@@ -40,16 +40,17 @@ if TYPE_CHECKING:
     from .adapter import Adapter
 
 
-async def _check_reply(bot: "Bot", event: SendMessageEvent):
-    """检查事件是否有引用消息，如果有则设置 reply 字段。
-
-    但是目前并没有API能获取被引用的消息的内容，所以现在不做。
+def _check_reply(bot: "Bot", event: SendMessageEvent):
+    """检查事件是否有引用消息，如果有则删除。
 
     参数:
         bot: Bot对象
         event: 事件
     """
-    ...
+    if event.content.quote is not None:
+        event.message = event.message.exclude("quote")
+    if not event.message:
+        event.message.append(MessageSegment.text(""))
 
 
 def _check_at_me(bot: "Bot", event: SendMessageEvent):
@@ -171,7 +172,7 @@ class Bot(BaseBot, ApiClient):
         """处理事件"""
         if isinstance(event, SendMessageEvent):
             _check_at_me(self, event)
-            # await _check_reply(self, event)
+            _check_reply(self, event)
         await handle_event(self, event)
 
     def _verify_signature(
