@@ -71,7 +71,7 @@ class Event(BaseEvent):
 
     @override
     def get_session_id(self) -> str:
-        raise ValueError("Event has no context!")
+        return f"{self.robot.villa_id}_{self.id}"
 
     @override
     def is_tome(self) -> bool:
@@ -129,7 +129,7 @@ class JoinVillaEvent(NoticeEvent):
 
     @override
     def get_session_id(self) -> str:
-        return str(self.join_uid)
+        return f"{self.villa_id}_{self.join_uid}"
 
 
 class SendMessageEvent(MessageEvent):
@@ -196,7 +196,7 @@ class SendMessageEvent(MessageEvent):
     @override
     def get_session_id(self) -> str:
         """获取会话ID"""
-        return f"{self.room_id}-{self.from_user_id}"
+        return f"{self.villa_id}_{self.room_id}_{self.from_user_id}"
 
     @root_validator(pre=True)
     @classmethod
@@ -293,6 +293,14 @@ class CreateRobotEvent(NoticeEvent):
             f"Bot(id={self.bot_id}) was added to Villa(id={self.villa_id})",
         )
 
+    @override
+    def is_tome(self) -> bool:
+        return True
+
+    @override
+    def get_session_id(self) -> str:
+        return f"{self.villa_id}_{self.bot_id}"
+
 
 class DeleteRobotEvent(NoticeEvent):
     """大别野删除机器人实例事件
@@ -308,6 +316,14 @@ class DeleteRobotEvent(NoticeEvent):
         return escape_tag(
             f"Bot(id={self.bot_id}) was removed from Villa(id={self.villa_id})",
         )
+
+    @override
+    def is_tome(self) -> bool:
+        return True
+
+    @override
+    def get_session_id(self) -> str:
+        return f"{self.villa_id}_{self.bot_id}"
 
 
 class AddQuickEmoticonEvent(NoticeEvent):
@@ -332,6 +348,21 @@ class AddQuickEmoticonEvent(NoticeEvent):
     """如果被回复的消息从属于机器人，则该字段不为空字符串"""
     is_cancel: bool = False
     """是否是取消表情"""
+
+    @override
+    def get_user_id(self) -> str:
+        return str(self.uid)
+
+    @override
+    def is_tome(self) -> bool:
+        return True
+
+    @override
+    def get_session_id(self) -> str:
+        return (
+            f"{self.villa_id}_{self.room_id}_{self.uid}"
+            f"_{self.emoticon_id}_{self.is_cancel}"
+        )
 
     @override
     def get_event_description(self) -> str:
@@ -365,6 +396,18 @@ class AuditCallbackEvent(NoticeEvent):
     """透传数据（和审核接口调用方传入的值一致）"""
     audit_result: AuditResult
     """审核结果"""
+
+    @override
+    def get_user_id(self) -> str:
+        return str(self.user_id)
+
+    @override
+    def is_tome(self) -> bool:
+        return self.bot_id == self.bot_tpl_id
+
+    @override
+    def get_session_id(self) -> str:
+        return f"{self.villa_id}_{self.bot_tpl_id}_{self.audit_id}"
 
     @override
     def get_event_description(self) -> str:

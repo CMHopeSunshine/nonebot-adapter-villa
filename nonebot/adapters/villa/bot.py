@@ -237,11 +237,7 @@ class Bot(BaseBot, ApiClient):
             message.insert(
                 0,
                 MessageSegment.mention_user(
-                    user_id=(
-                        event.from_user_id
-                        if isinstance(event, SendMessageEvent)
-                        else event.uid
-                    ),
+                    user_id=int(event.get_user_id()),
                     user_name=(
                         event.content.user.name
                         if isinstance(event, SendMessageEvent)
