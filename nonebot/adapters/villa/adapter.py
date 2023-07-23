@@ -59,7 +59,7 @@ class Adapter(BaseAdapter):
     async def _forward_http(self):
         for bot_info in self.villa_config.villa_bots:
             if bot_info.callback_url:
-                bot = Bot(self, bot_info)
+                bot = Bot(self, bot_info.bot_id, bot_info)
                 self.bot_connect(bot)
                 log("INFO", f"<y>Bot {bot.self_id} connected</y>")
                 http_setup = HTTPServerSetup(
@@ -90,6 +90,7 @@ class Adapter(BaseAdapter):
                         ) is not None:
                             bot = Bot(
                                 self,
+                                bot_info.bot_id,
                                 bot_info,
                             )
                             self.bot_connect(bot)
@@ -137,7 +138,7 @@ class Adapter(BaseAdapter):
     async def _start_forward(self) -> None:
         for bot_info in self.villa_config.villa_bots:
             if bot_info.ws_url:
-                bot = Bot(self, bot_info)
+                bot = Bot(self, bot_info.bot_id, bot_info)
                 self.bot_connect(bot)
                 log("INFO", f"<y>Bot {bot.self_id} connected</y>")
                 self.tasks.append(
@@ -183,6 +184,7 @@ class Adapter(BaseAdapter):
                                         ) is not None:
                                             bot = Bot(
                                                 self,
+                                                bot_info.bot_id,
                                                 bot_info,
                                             )
                                             self.bot_connect(bot)

@@ -116,9 +116,11 @@ class Bot(BaseBot, ApiClient):
     def __init__(
         self,
         adapter: "Adapter",
+        self_id: str,
         bot_info: BotInfo,
+        **kwargs: Any,
     ) -> None:
-        super().__init__(adapter, bot_info.bot_id)
+        super().__init__(adapter, self_id)
         self.adapter: Adapter = adapter
         self.bot_secret: str = bot_info.bot_secret
         self.bot_secret_encrypt = hmac.new(
