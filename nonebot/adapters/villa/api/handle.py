@@ -435,12 +435,13 @@ async def _audit(
 async def _transfer_image(
     adapter: "Adapter",
     bot: "Bot",
+    villa_id: int,
     url: str,
 ) -> str:
     request = Request(
         method="POST",
         url=adapter.base_url / "vila/api/bot/platform/transferImage",
-        headers=bot.get_authorization_header(),
+        headers=bot.get_authorization_header(villa_id),
         json={
             "url": url,
         },

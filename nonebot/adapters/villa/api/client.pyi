@@ -119,5 +119,6 @@ class ApiClient:
     async def transfer_image(
         self,
         *,
+        villa_id: int,
         url: str,
     ) -> str: ...
