@@ -115,6 +115,7 @@ class ApiClient:
         pass_through: str,
         room_id: int,
         uid: int,
+        content_type: ContentType,
     ) -> str: ...
     async def transfer_image(
         self,
