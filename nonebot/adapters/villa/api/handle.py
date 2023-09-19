@@ -417,6 +417,7 @@ async def _audit(
     pass_through: str,
     room_id: int,
     uid: int,
+    content_type: ContentType,
 ) -> str:
     request = Request(
         method="POST",
@@ -427,6 +428,7 @@ async def _audit(
             "pass_through": pass_through,
             "room_id": room_id,
             "uid": uid,
+            "content_type": content_type,
         },
     )
     return (await _request(adapter, bot, request))["audit_id"]
