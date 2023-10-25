@@ -151,7 +151,7 @@ class Bot(BaseBot, ApiClient):
         return self._bot_info.template.commands
 
     @property
-    def description(self) -> str:
+    def description(self) -> Optional[str]:
         """Bot 介绍描述"""
         if not self._bot_info:
             raise ValueError(f"Bot {self.self_id} hasn't received any events yet.")

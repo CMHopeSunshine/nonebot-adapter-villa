@@ -8,7 +8,7 @@ from nonebot.utils import escape_tag
 
 from pydantic import root_validator
 
-from .api import MessageContentInfoGet, Robot
+from .api import MessageContentInfoGet, QuoteMessage, Robot
 from .message import Message, MessageSegment
 
 
@@ -154,6 +154,8 @@ class SendMessageEvent(MessageEvent):
     """消息ID"""
     bot_msg_id: Optional[str]
     """如果被回复的消息从属于机器人，则该字段不为空字符串"""
+    quote_msg: Optional[QuoteMessage]
+    """回调消息引用消息的基础信息"""
 
     to_me: bool = True
     """是否和Bot有关"""
