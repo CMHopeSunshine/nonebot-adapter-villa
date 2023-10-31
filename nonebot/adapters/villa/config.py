@@ -8,9 +8,9 @@ class BotInfo(BaseModel):
     bot_secret: str
     pub_key: str
     callback_url: Optional[str] = None
+    verify_event: bool = True
     # ws_url: Optional[str] = None
     # ws_secret: Optional[str] = None
-    verify_event: bool = True
 
     # @validator("pub_key")
     # @classmethod

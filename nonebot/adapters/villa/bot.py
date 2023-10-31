@@ -112,6 +112,8 @@ class Bot(BaseBot, ApiClient):
     大别野协议 Bot 适配。
     """
 
+    adapter: "Adapter"
+
     @override
     def __init__(
         self,
