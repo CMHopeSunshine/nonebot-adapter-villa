@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import IntEnum
 import json
 from typing import Any, Dict, Literal, Optional, Union
@@ -52,6 +53,11 @@ class Event(BaseEvent):
     def bot_id(self) -> str:
         """机器人ID"""
         return self.robot.template.id
+
+    @property
+    def time(self) -> datetime:
+        """事件创建的时间"""
+        return datetime.fromtimestamp(self.created_at)
 
     @override
     def get_event_name(self) -> str:
@@ -152,17 +158,27 @@ class SendMessageEvent(MessageEvent):
     """用户昵称"""
     msg_uid: str
     """消息ID"""
-    bot_msg_id: Optional[str]
+    bot_msg_id: Optional[str] = None
     """如果被回复的消息从属于机器人，则该字段不为空字符串"""
-    quote_msg: Optional[QuoteMessage]
+    quote_msg: Optional[QuoteMessage] = None
     """回调消息引用消息的基础信息"""
 
     to_me: bool = True
     """是否和Bot有关"""
     message: Message
     """事件消息"""
-    raw_message: Message
+    original_message: Message
     """事件原始消息"""
+
+    @property
+    def message_id(self) -> str:
+        """消息ID"""
+        return self.msg_uid
+
+    @property
+    def reply(self) -> Optional[QuoteMessage]:
+        """消息的回复信息"""
+        return self.quote_msg
 
     @property
     def villa_id(self) -> int:
@@ -206,8 +222,7 @@ class SendMessageEvent(MessageEvent):
         if not data.get("content"):
             return data
         msg = Message()
-        data["content"] = json.loads(data["content"])
-        msg_content_info = data["content"]
+        msg_content_info = data["content"] = json.loads(data["content"])
         if quote := msg_content_info.get("quote"):
             msg.append(
                 MessageSegment.quote(
@@ -220,7 +235,9 @@ class SendMessageEvent(MessageEvent):
         text = content["text"]
         entities = content["entities"]
         if not entities:
-            return Message(MessageSegment.text(text))
+            msg.append(MessageSegment.text(text))
+            data["message"] = data["original_message"] = msg
+            return data
         text = text.encode("utf-16")
         last_offset: int = 0
         last_length: int = 0
@@ -253,7 +270,8 @@ class SendMessageEvent(MessageEvent):
                 msg.append(
                     MessageSegment.mention_user(
                         int(entity_detail["user_id"]),
-                        data["villa_id"],
+                        entity_detail["user_name"],
+                        villa_id=data["villa_id"],
                     ),
                 )
             elif entity_detail["type"] == "mention_all":
@@ -269,14 +287,18 @@ class SendMessageEvent(MessageEvent):
                 )
             else:
                 entity_detail["show_text"] = entity_text
-                msg.append(MessageSegment.link(entity_detail["url"], entity_text))
+                msg.append(
+                    MessageSegment.link(
+                        entity_detail["url"],
+                        entity_detail["show_text"],
+                    ),
+                )
             last_offset = offset
             last_length = length
         end_offset = last_offset + last_length
         if last_text := text[(end_offset + 1) * 2 :].decode("utf-16"):
             msg.append(MessageSegment.text(last_text))
-        data["message"] = msg
-        data["raw_message"] = msg
+        data["message"] = data["original_message"] = msg
         return data
 
 
@@ -346,7 +368,7 @@ class AddQuickEmoticonEvent(NoticeEvent):
     """表情内容"""
     msg_uid: str
     """被回复的消息 id"""
-    bot_msg_id: Optional[str]
+    bot_msg_id: Optional[str] = None
     """如果被回复的消息从属于机器人，则该字段不为空字符串"""
     is_cancel: bool = False
     """是否是取消表情"""
