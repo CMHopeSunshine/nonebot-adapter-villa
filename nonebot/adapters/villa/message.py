@@ -1,5 +1,5 @@
 from typing import Iterable, Optional, Type, Union
-from typing_extensions import override
+from typing_extensions import Self, TypedDict, override
 
 from nonebot.adapters import (
     Message as BaseMessage,
@@ -300,66 +300,122 @@ class MessageSegment(BaseMessageSegment["Message"]):
 
 
 class TextSegment(MessageSegment):
+    class Data(TypedDict):
+        text: str
+
+    data: Data
+
     @override
     def __str__(self) -> str:
         return escape_tag(self.data["text"])
 
 
 class MentionRobotSegement(MessageSegment):
+    class Data(TypedDict):
+        mention_robot: MentionedRobot
+
+    data: Data
+
     @override
     def __str__(self) -> str:
         return repr(self.data["mention_robot"])
 
 
 class MentionUserSegement(MessageSegment):
+    class Data(TypedDict):
+        mention_user: MentionedUser
+        villa_id: Optional[int]
+
+    data: Data
+
     @override
     def __str__(self) -> str:
         return repr(self.data["mention_user"])
 
 
 class MentionAllSegement(MessageSegment):
+    class Data(TypedDict):
+        mention_all: MentionedAll
+
+    data: Data
+
     @override
     def __str__(self) -> str:
         return repr(self.data["mention_all"])
 
 
 class RoomLinkSegment(MessageSegment):
+    class Data(TypedDict):
+        room_link: VillaRoomLink
+
+    data: Data
+
     @override
     def __str__(self) -> str:
         return repr(self.data["room_link"])
 
 
 class LinkSegment(MessageSegment):
+    class Data(TypedDict):
+        link: Link
+
+    data: Data
+
     @override
     def __str__(self) -> str:
         return repr(self.data["link"])
 
 
 class ImageSegment(MessageSegment):
+    class Data(TypedDict):
+        image: Image
+
+    data: Data
+
     @override
     def __str__(self) -> str:
         return repr(self.data["image"])
 
 
 class QuoteSegment(MessageSegment):
+    class Data(TypedDict):
+        quote: QuoteInfo
+
+    data: Data
+
     @override
     def __str__(self) -> str:
         return repr(self.data["quote"])
 
 
 class PostSegment(MessageSegment):
+    class Data(TypedDict):
+        post: PostMessageContent
+
+    data: Data
+
     @override
     def __str__(self) -> str:
         return repr(self.data["post"])
 
 
 class PreviewLinkSegment(MessageSegment):
+    class Data(TypedDict):
+        preview_link: PreviewLink
+
+    data: Data
+
     @override
     def __str__(self) -> str:
         return repr(self.data["preview_link"])
 
 
 class BadgeSegment(MessageSegment):
+    class Data(TypedDict):
+        badge: Badge
+
+    data: Data
+
     @override
     def __str__(self) -> str:
         return repr(self.data["badge"])
@@ -393,3 +449,82 @@ class Message(BaseMessage[MessageSegment]):
     @override
     def _construct(msg: str) -> Iterable[MessageSegment]:
         yield MessageSegment.text(msg)
+
+    @classmethod
+    def from_message_content_info(cls, content_info: MessageContentInfo) -> Self:
+        msg = cls()
+        if content_info.quote:
+            msg.append(
+                MessageSegment.quote(
+                    content_info.quote.quoted_message_id,
+                    content_info.quote.quoted_message_send_time,
+                ),
+            )
+        content = content_info.content
+        if isinstance(content, TextMessageContent):
+            if not content.entities:
+                msg.append(MessageSegment.text(content.text))
+                return msg
+            text = content.text.encode("utf-16")
+            last_offset: int = 0
+            last_length: int = 0
+            for entity in content.entities:
+                end_offset = last_offset + last_length
+                offset = entity.offset
+                length = entity.length
+                entity_detail = entity.entity
+                if offset != end_offset:
+                    msg.append(
+                        MessageSegment.text(
+                            text[((end_offset + 1) * 2) : ((offset + 1) * 2)].decode(
+                                "utf-16",
+                            ),
+                        ),
+                    )
+                if entity_detail.type == "mentioned_robot":
+                    msg.append(
+                        MessageSegment.mention_robot(
+                            entity_detail.bot_id,
+                            entity_detail.bot_name,
+                        ),
+                    )
+                elif entity_detail.type == "mentioned_user":
+                    msg.append(
+                        MessageSegment.mention_user(
+                            int(entity_detail.user_id),
+                            entity_detail.user_name,
+                        ),
+                    )
+                elif entity_detail.type == "mention_all":
+                    msg.append(MessageSegment.mention_all(entity_detail.show_text))
+                elif entity_detail.type == "villa_room_link":
+                    msg.append(
+                        MessageSegment.room_link(
+                            int(entity_detail.villa_id),
+                            int(entity_detail.room_id),
+                            entity_detail.room_name,
+                        ),
+                    )
+                else:
+                    msg.append(
+                        MessageSegment.link(entity_detail.url, entity_detail.show_text),
+                    )
+                last_offset = offset
+                last_length = length
+            end_offset = last_offset + last_length
+            if last_text := text[(end_offset + 1) * 2 :].decode("utf-16"):
+                msg.append(MessageSegment.text(last_text))
+            return msg
+        elif isinstance(content, ImageMessageContent):
+            msg.append(
+                MessageSegment.image(
+                    content.url,
+                    content.size.width if content.size else None,
+                    content.size.height if content.size else None,
+                    content.file_size,
+                ),
+            )
+            return msg
+        else:
+            msg.append(MessageSegment.post(content.post_id))
+            return msg
