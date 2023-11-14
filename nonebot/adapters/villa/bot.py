@@ -1004,7 +1004,7 @@ class Bot(BaseBot):
         )
         request = Request(
             "POST",
-            url="https://mihoyo-community-web.oss-cn-shanghai.aliyuncs.com/",
+            url=upload_params.params.host,
             data=upload_params.params.to_upload_data(),
             files={"file": image},
         )
