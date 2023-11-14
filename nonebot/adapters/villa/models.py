@@ -10,8 +10,12 @@ from pydantic import BaseModel, Field, validator
 
 class ApiResponse(BaseModel):
     retcode: int
-    message: str
+    message: str = ""
     data: Any
+
+    class Config:
+        allow_population_by_field_name = True
+        fields = {"message": {"alias": "msg"}}
 
 
 class BotAuth(BaseModel):

@@ -1008,4 +1008,4 @@ class Bot(BaseBot):
             data=upload_params.params.to_upload_data(),
             files={"file": image},
         )
-        return parse_obj_as(ImageUploadResult, await self.adapter.request(request))
+        return parse_obj_as(ImageUploadResult, await self._request(request))
