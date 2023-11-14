@@ -55,7 +55,7 @@ DRIVER=~fastapi+~httpx
 
 - `bot_id`: 机器人id，以`bot_`开头
 - `bot_secret`: 机器人密钥
-- `pub_key`: 加密和验证所需的pub_key
+- `pub_key`: 加密和验证所需的 pub_key
 - `callback_url`: http回调地址 endpoint，例如申请bot时给的回调地址是`http://域名/your/callback/url`，那么配置里的`callback_url`填写`/your/callback/url`
 
 此外还有以下选填配置：
@@ -80,31 +80,34 @@ VILLA_BOTS='
 
 ## 已支持消息段
 
-> 注意，当前大别野只能接收到有@Bot(在哪个位置皆可)的消息事件，且不能有多个@(即使是@两次Bot都不行)
-
 - `MessageSegment.text`: 纯文本
   + 米游社自带表情也是用text来发送，以[表情名]格式，例如MessageSegment.text("[爱心]")
 - `MessageSegment.mention_robot`: @机器人
 - `MessageSegment.mention_user`: @用户
-  + `user_name`和`villa_id`必须给出其中之一，给`villa_id`时，调用api来获取用户名
+  + `user_name` 和 `villa_id` 必须给出其中之一，给 `villa_id` 时，调用 api 来获取用户名
 - `MessageSegment.mention_all`: @全体成员
 - `MessageSegment.room_link`: #房间跳转链接
 - `MessageSegment.link`: 超链接
   + 使用link的话链接能够点击进行跳转，使用text的话不能点击
-  + 字段`show_text`是指链接显示的文字，但若指定了该字段，Web端大别野会无法正常跳转
-  + 字段`requires_bot_access_token`为true时，跳转链接会带上含有用户信息的token
+  + 字段 `show_text` 是指链接显示的文字，但若指定了该字段，Web端大别野会无法正常跳转
+  + 字段 `requires_bot_access_token` 为true时，跳转链接会带上含有用户信息的token
 - `MessageSegment.quote`: 引用(回复)消息
   + 不能**单独**使用，要与其他消息段一起使用
-- `MessageSegment.image`: URL图片
-  + 暂时只支持url图片
-  + 如果在单次消息中，发送多张图片或者与其他消息段拼接，那么将无法在web端显示出来
+- `MessageSegment.image`: URL 图片
+  + 图片 url 需为米哈游官方图床 url
+  + 非官方图床 url 可以通过 `Bot.transfer_image` 接口转换为官方图床 url
+  + 本地图片可以通过 `Bot.upload_image` 接口来上传图片，使用返回结果的 url 来发送
+  + 多张图片拼接时，只会发送最后一张图片
+  + 与其他消息段拼接时，将无法在 web 端显示出来
 - `MessageSegment.post`: 米游社帖子
   + 只能单独发送，与其他消息段拼接时将会被忽略
 - `MessageSegment.preview_link`: 预览链接(卡片)
   + 该消息段未在官方文档公开
-- `MessageSegment.badge`: 消息徽标
+  + 无法在 web 端显示出来
+- `MessageSegment.badge`: 消息徽标(消息下方的可链接跳转的下标)
   + 该消息段未在官方文档公开
-  + 不能**单独**使用和**单**张图片使用，要与其他消息段一起使用
+  + 不能**单独**使用，要与其他消息段一起使用
+  + 无法在 web 端显示出来
 
 
 
@@ -181,9 +184,9 @@ async def _(event: SendMessageEvent, args: Message = CommandArg()):
 
 大别野 Bot 和本适配器均为开发测试中，如遇问题请提出 [issue](https://github.com/CMHopeSunshine/nonebot-adapter-villa/issues) ，感谢支持！
 
-也欢迎来我的大别野[「尘世闲游」]((https://dby.miyoushe.com/chat/1047/21652))(ID: `wgiJNaU`)进行交流~
+也欢迎来开发者的大别野[「尘世闲游」]((https://dby.miyoushe.com/chat/1047/21652))(ID: `wgiJNaU`)进行交流~
 
 ## 相关项目
 
-- [NoneBot2](https://github.com/nonebot/nonebot2): 非常好用的Python跨平台机器人框架！
+- [NoneBot2](https://github.com/nonebot/nonebot2): 非常好用的 Python 跨平台机器人框架！
 - [villa-py](https://github.com/CMHopeSunshine/villa-py): 大别野 Bot Python SDK。
