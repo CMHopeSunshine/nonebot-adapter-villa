@@ -261,7 +261,7 @@ class Bot(BaseBot):
     async def _handle_respnose(self, response: Response) -> Any:
         if not response.content:
             raise NetworkError("API request error when parsing response")
-        resp = ApiResponse.parse_raw(str(response.content))
+        resp = ApiResponse.parse_raw(response.content)
         if resp.retcode == 0:
             return resp.data
         if resp.retcode == -502:
