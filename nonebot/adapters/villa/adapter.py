@@ -1,6 +1,6 @@
 import asyncio
 import json
-from typing import Any, List, Literal, cast
+from typing import Any, List, Literal, Optional, cast
 from typing_extensions import override
 
 from nonebot.adapters import Adapter as BaseAdapter
@@ -17,12 +17,11 @@ from nonebot.utils import escape_tag
 
 from pydantic import parse_obj_as
 
-from .api import API_HANDLERS
 from .bot import Bot
 from .config import Config
 from .event import event_classes, pre_handle_event
 from .exception import ApiNotAvailable
-from .utils import log
+from .utils import API, log
 
 
 class Adapter(BaseAdapter):
@@ -31,7 +30,7 @@ class Adapter(BaseAdapter):
         super().__init__(driver, **kwargs)
         self.villa_config: Config = Config(**self.config.dict())
         self.tasks: List[asyncio.Task] = []
-        self.base_url: URL = URL("https://bbs-api.miyoushe.com")
+        self.base_url: URL = URL("https://bbs-api.miyoushe.com/vila/api/bot/platform")
         self._setup()
 
     @classmethod
@@ -275,6 +274,7 @@ class Adapter(BaseAdapter):
     async def _call_api(self, bot: Bot, api: str, **data: Any) -> Any:
         log("DEBUG", f"Calling API <y>{api}</y>")
         log("TRACE", f"With Data <y>{escape_tag(str(data))}</y>")
-        if (api_handler := API_HANDLERS.get(api)) is None:
+        api_handler: Optional[API] = getattr(bot.__class__, api, None)
+        if api_handler is None:
             raise ApiNotAvailable(api)
-        return await api_handler(self, bot, **data)
+        return await api_handler(bot, **data)

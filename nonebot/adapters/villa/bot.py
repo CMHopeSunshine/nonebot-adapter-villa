@@ -1,40 +1,80 @@
 import base64
 import hashlib
 import hmac
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from io import BytesIO
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, List, NoReturn, Optional, Union, cast
 from typing_extensions import override
 from urllib.parse import urlencode
 
 from nonebot.adapters import Bot as BaseBot
+from nonebot.drivers import Request, Response
 from nonebot.message import handle_event
+from nonebot.utils import escape_tag
 
+from pydantic import parse_obj_as
 import rsa
 
-from .api import (
-    ApiClient,
-    Badge,
-    Command,
-    Image,
-    ImageMessageContent,
-    Link,
-    MentionedAll,
-    MentionedInfo,
-    MentionedRobot,
-    MentionedUser,
-    MentionType,
-    MessageContentInfo,
-    PostMessageContent,
-    PreviewLink,
-    QuoteInfo,
-    Robot,
-    TextEntity,
-    TextMessageContent,
-    VillaRoomLink,
-)
 from .config import BotInfo
 from .event import AddQuickEmoticonEvent, Event, SendMessageEvent
-from .message import Message, MessageSegment
-from .utils import log
+from .exception import (
+    ActionFailed,
+    BotNotAdded,
+    InsufficientPermission,
+    InvalidBotAuthInfo,
+    InvalidMemberBotAccessToken,
+    InvalidRequest,
+    NetworkError,
+    PermissionDenied,
+    UnknownServerError,
+    UnsupportedMsgType,
+)
+from .message import (
+    BadgeSegment,
+    ImageSegment,
+    LinkSegment,
+    MentionAllSegement,
+    MentionRobotSegement,
+    MentionUserSegement,
+    Message,
+    MessageSegment,
+    PostSegment,
+    PreviewLinkSegment,
+    QuoteSegment,
+    RoomLinkSegment,
+    TextSegment,
+)
+from .models import (
+    ApiResponse,
+    CheckMemberBotAccessTokenReturn,
+    Color,
+    Command,
+    ContentType,
+    Emoticon,
+    Group,
+    GroupRoom,
+    ImageMessageContent,
+    ImageUploadResult,
+    Link,
+    Member,
+    MemberListReturn,
+    MemberRoleDetail,
+    MentionedAll,
+    MentionedInfo,
+    MentionType,
+    MessageContentInfo,
+    Permission,
+    PostMessageContent,
+    Robot,
+    Room,
+    RoomSort,
+    TextEntity,
+    TextMessageContent,
+    UploadImageParamsReturn,
+    Villa,
+    VillaRoomLink,
+)
+from .utils import API, get_img_extenion, get_img_md5, log
 
 if TYPE_CHECKING:
     from .adapter import Adapter
@@ -107,7 +147,7 @@ def _check_at_me(bot: "Bot", event: SendMessageEvent):
         message.append(MessageSegment.text(""))
 
 
-class Bot(BaseBot, ApiClient):
+class Bot(BaseBot):
     """
     大别野协议 Bot 适配。
     """
@@ -137,6 +177,12 @@ class Bot(BaseBot, ApiClient):
     @override
     def __repr__(self) -> str:
         return f"Bot(type={self.type!r}, self_id={self.self_id!r})"
+
+    @override
+    def __getattr__(self, name: str) -> NoReturn:
+        raise AttributeError(
+            f'"{self.__class__.__name__}" object has no attribute "{name}"',
+        )
 
     @property
     def nickname(self) -> str:
@@ -183,7 +229,7 @@ class Bot(BaseBot, ApiClient):
         self,
         body: str,
         bot_sign: str,
-    ):
+    ) -> bool:
         sign = base64.b64decode(bot_sign)
         sign_data = urlencode(
             {"body": body.rstrip("\n"), "secret": self.bot_secret},
@@ -212,6 +258,72 @@ class Bot(BaseBot, ApiClient):
             "x-rpc-bot_villa_id": str(villa_id or ""),
         }
 
+    async def _handle_respnose(self, response: Response) -> Any:
+        if not response.content:
+            raise NetworkError("API request error when parsing response")
+        resp = ApiResponse.parse_raw(str(response.content))
+        if resp.retcode == 0:
+            return resp.data
+        if resp.retcode == -502:
+            raise UnknownServerError(resp)
+        if resp.retcode == -1:
+            raise InvalidRequest(resp)
+        if resp.retcode == 10318001:
+            raise InsufficientPermission(resp)
+        if resp.retcode == 10322002:
+            raise BotNotAdded(resp)
+        if resp.retcode == 10322003:
+            raise PermissionDenied(resp)
+        if resp.retcode == 10322004:
+            raise InvalidMemberBotAccessToken(resp)
+        if resp.retcode == 10322005:
+            raise InvalidBotAuthInfo(resp)
+        if resp.retcode == 10322006:
+            raise UnsupportedMsgType(resp)
+        raise ActionFailed(response.status_code, resp)
+
+    async def _request(self, request: Request):
+        try:
+            resp = await self.adapter.request(request)
+            log(
+                "TRACE",
+                f"API status_code:{resp.status_code} content: {escape_tag(str(resp.content))}",  # noqa: E501
+            )
+        except Exception as e:
+            raise NetworkError("API request failed") from e
+        return await self._handle_respnose(resp)
+
+    async def send_to(
+        self,
+        villa_id: int,
+        room_id: int,
+        message: Union[str, Message, MessageSegment],
+    ) -> str:
+        """向指定房间发送消息
+
+        参数:
+            villa_id: 大别野 ID
+            room_id: 房间 ID
+            message: 消息
+
+        返回:
+            str: 消息 ID
+        """
+        message = message if isinstance(message, Message) else Message(message)
+        content_info = await self.parse_message_content(message)
+        if isinstance(content_info.content, PostMessageContent):
+            object_name = "MHY:Post"
+        elif isinstance(content_info.content, ImageMessageContent):
+            object_name = "MHY:Image"
+        else:
+            object_name = "MHY:Text"
+        return await self.send_message(
+            villa_id=villa_id,
+            room_id=room_id,
+            object_name=object_name,
+            msg_content=content_info.json(by_alias=True, exclude_none=True),
+        )
+
     @override
     async def send(
         self,
@@ -235,7 +347,6 @@ class Bot(BaseBot, ApiClient):
         """
         if not isinstance(event, (SendMessageEvent, AddQuickEmoticonEvent)):
             raise RuntimeError("Event cannot be replied to!")
-        message = MessageSegment.text(message) if isinstance(message, str) else message
         message = message if isinstance(message, Message) else Message(message)
         if kwargs.pop("mention_sender", False) or kwargs.pop("at_sender", False):
             message.insert(
@@ -252,18 +363,10 @@ class Bot(BaseBot, ApiClient):
             )
         if kwargs.pop("quote_message", False) or kwargs.pop("reply_message", False):
             message += MessageSegment.quote(event.msg_uid, event.send_at)
-        content_info = await self.parse_message_content(message)
-        if isinstance(content_info.content, PostMessageContent):
-            object_name = "MHY:Post"
-        elif isinstance(content_info.content, ImageMessageContent):
-            object_name = "MHY:Image"
-        else:
-            object_name = "MHY:Text"
-        return await self.send_message(
+        return await self.send_to(
             villa_id=event.villa_id,
             room_id=event.room_id,
-            object_name=object_name,
-            msg_content=content_info.json(by_alias=True, exclude_none=True),
+            message=message,
         )
 
     async def parse_message_content(self, message: Message) -> MessageContentInfo:
@@ -275,46 +378,38 @@ class Bot(BaseBot, ApiClient):
         返回:
             MessageContentInfo: 消息内容对象
         """
-        if quote_seg := message["quote"]:
-            quote: Optional[QuoteInfo] = quote_seg[-1].data["quote"]
-        else:
-            quote = None
-        if images_seg := message["image"]:
-            images: Optional[List[Image]] = [
-                image.data["image"] for image in images_seg
-            ]
-        else:
-            images = None
-        if post_seg := message["post"]:
-            post: Optional[PostMessageContent] = post_seg[-1].data["post"]
-        else:
-            post = None
-        if badge_seg := message["badge"]:
-            badge: Optional[Badge] = badge_seg[-1].data["badge"]
-        else:
-            badge = None
-        if preview_link_seg := message["preview_link"]:
-            preview_link: Optional[PreviewLink] = preview_link_seg[-1].data[
-                "preview_link"
-            ]
-        else:
-            preview_link = None
+        quote = image = post = badge = preview_link = None
+        if quote_seg := cast(Optional[List[QuoteSegment]], message["quote"] or None):
+            quote = quote_seg[-1].data["quote"]
+        if image_seg := cast(
+            Optional[List[ImageSegment]],
+            message["image"] or None,
+        ):
+            image = image_seg[-1].data["image"]
+        if post_seg := cast(Optional[List[PostSegment]], message["post"] or None):
+            post = post_seg[-1].data["post"]
+        if badge_seg := cast(Optional[List[BadgeSegment]], message["badge"] or None):
+            badge = badge_seg[-1].data["badge"]
+        if preview_link_seg := cast(
+            Optional[List[PreviewLinkSegment]],
+            message["preview_link"] or None,
+        ):
+            preview_link = preview_link_seg[-1].data["preview_link"]
 
         def cal_len(x):
             return len(x.encode("utf-16")) // 2 - 1
 
+        message = message.exclude("quote", "image", "post", "badge", "preview_link")
         message_text = ""
         message_offset = 0
         entities: List[TextEntity] = []
         mentioned = MentionedInfo(type=MentionType.PART)
         for seg in message:
             try:
-                if seg.type in ("quote", "image", "post", "badge", "preview_link"):
-                    continue
-                if seg.type == "text":
+                if isinstance(seg, TextSegment):
                     seg_text = seg.data["text"]
                     length = cal_len(seg_text)
-                elif seg.type == "mention_all":
+                elif isinstance(seg, MentionAllSegement):
                     mention_all: MentionedAll = seg.data["mention_all"]
                     seg_text = f"@{mention_all.show_text} "
                     length = cal_len(seg_text)
@@ -326,8 +421,8 @@ class Bot(BaseBot, ApiClient):
                         ),
                     )
                     mentioned.type = MentionType.ALL
-                elif seg.type == "mention_robot":
-                    mention_robot: MentionedRobot = seg.data["mention_robot"]
+                elif isinstance(seg, MentionRobotSegement):
+                    mention_robot = seg.data["mention_robot"]
                     seg_text = f"@{mention_robot.bot_name} "
                     length = cal_len(seg_text)
                     entities.append(
@@ -338,9 +433,11 @@ class Bot(BaseBot, ApiClient):
                         ),
                     )
                     mentioned.user_id_list.append(mention_robot.bot_id)
-                elif seg.type == "mention_user":
-                    mention_user: MentionedUser = seg.data["mention_user"]
+                elif isinstance(seg, MentionUserSegement):
+                    mention_user = seg.data["mention_user"]
                     if mention_user.user_name is None:
+                        if not seg.data["villa_id"]:
+                            raise ValueError("cannot get user name without villa_id")
                         # 需要调用API获取被@的用户的昵称
                         user = await self.get_member(
                             villa_id=seg.data["villa_id"],
@@ -359,7 +456,7 @@ class Bot(BaseBot, ApiClient):
                         ),
                     )
                     mentioned.user_id_list.append(str(mention_user.user_id))
-                elif seg.type == "room_link":
+                elif isinstance(seg, RoomLinkSegment):
                     room_link: VillaRoomLink = seg.data["room_link"]
                     if room_link.room_name is None:
                         # 需要调用API获取房间的名称
@@ -379,13 +476,15 @@ class Bot(BaseBot, ApiClient):
                             entity=room_link,
                         ),
                     )
-                else:
+                elif isinstance(seg, LinkSegment):
                     link: Link = seg.data["link"]
                     seg_text = link.show_text
                     length = cal_len(seg_text)
                     entities.append(
                         TextEntity(offset=message_offset, length=length, entity=link),
                     )
+                else:
+                    continue
                 message_offset += length
                 message_text += seg_text
             except Exception as e:
@@ -395,22 +494,15 @@ class Bot(BaseBot, ApiClient):
             mentioned = None
 
         if not (message_text or entities):
-            if images:
-                if len(images) > 1:
-                    content = TextMessageContent(
-                        text="\u200b",
-                        images=images,
-                        preview_link=preview_link,
-                        badge=badge,
-                    )
-                else:
-                    content = ImageMessageContent(**images[-1].dict())
-            elif preview_link:
+            if preview_link or badge:
                 content = TextMessageContent(
                     text="\u200b",
                     preview_link=preview_link,
                     badge=badge,
+                    images=[image] if image else None,
                 )
+            elif image:
+                content = image
             elif post:
                 content = post
             else:
@@ -419,9 +511,501 @@ class Bot(BaseBot, ApiClient):
             content = TextMessageContent(
                 text=message_text,
                 entities=entities,
-                images=images,
+                images=[image] if image else None,
                 preview_link=preview_link,
                 badge=badge,
             )
 
         return MessageContentInfo(content=content, mentionedInfo=mentioned, quote=quote)
+
+    @API
+    async def check_member_bot_access_token(
+        self,
+        *,
+        villa_id: int,
+        token: str,
+    ) -> CheckMemberBotAccessTokenReturn:
+        request = Request(
+            method="POST",
+            url=self.adapter.base_url / "checkMemberBotAccessToken",
+            headers=self.get_authorization_header(
+                villa_id,
+            ),
+            json={"token": token},
+        )
+        return parse_obj_as(
+            CheckMemberBotAccessTokenReturn,
+            await self._request(request),
+        )
+
+    @API
+    async def get_villa(self, villa_id: int) -> Villa:
+        request = Request(
+            method="GET",
+            url=self.adapter.base_url / "getVilla",
+            headers=self.get_authorization_header(villa_id),
+        )
+        return parse_obj_as(Villa, (await self._request(request))["villa"])
+
+    @API
+    async def get_member(
+        self,
+        *,
+        villa_id: int,
+        uid: int,
+    ) -> Member:
+        request = Request(
+            method="GET",
+            url=self.adapter.base_url / "getMember",
+            headers=self.get_authorization_header(villa_id),
+            json={"uid": uid},
+        )
+        return parse_obj_as(Member, (await self._request(request))["member"])
+
+    @API
+    async def get_villa_members(
+        self,
+        *,
+        villa_id: int,
+        offset: int,
+        size: int,
+    ) -> MemberListReturn:
+        request = Request(
+            method="GET",
+            url=self.adapter.base_url / "getVillaMembers",
+            headers=self.get_authorization_header(villa_id),
+            json={"offset": offset, "size": size},
+        )
+        return parse_obj_as(MemberListReturn, await self._request(request))
+
+    @API
+    async def delete_villa_member(
+        self,
+        *,
+        villa_id: int,
+        uid: int,
+    ) -> None:
+        request = Request(
+            method="POST",
+            url=self.adapter.base_url / "deleteVillaMember",
+            headers=self.get_authorization_header(villa_id),
+            json={"uid": uid},
+        )
+        await self._request(request)
+
+    @API
+    async def pin_message(
+        self,
+        *,
+        villa_id: int,
+        msg_uid: str,
+        is_cancel: bool,
+        room_id: int,
+        send_at: int,
+    ) -> None:
+        request = Request(
+            method="POST",
+            url=self.adapter.base_url / "pinMessage",
+            headers=self.get_authorization_header(villa_id),
+            json={
+                "msg_uid": msg_uid,
+                "is_cancel": is_cancel,
+                "room_id": room_id,
+                "send_at": send_at,
+            },
+        )
+        await self._request(request)
+
+    @API
+    async def recall_message(
+        self,
+        *,
+        villa_id: int,
+        msg_uid: str,
+        room_id: int,
+        msg_time: int,
+    ) -> None:
+        request = Request(
+            method="POST",
+            url=self.adapter.base_url / "recallMessage",
+            headers=self.get_authorization_header(villa_id),
+            json={"msg_uid": msg_uid, "room_id": room_id, "msg_time": msg_time},
+        )
+        await self._request(request)
+
+    @API
+    async def send_message(
+        self,
+        *,
+        villa_id: int,
+        room_id: int,
+        object_name: str,
+        msg_content: Union[str, MessageContentInfo],
+    ) -> str:
+        if isinstance(msg_content, MessageContentInfo):
+            content = msg_content.json(by_alias=True, exclude_none=True)
+        else:
+            content = msg_content
+        request = Request(
+            method="POST",
+            url=self.adapter.base_url / "sendMessage",
+            headers=self.get_authorization_header(villa_id),
+            json={
+                "room_id": room_id,
+                "object_name": object_name,
+                "msg_content": content,
+            },
+        )
+        return (await self._request(request))["bot_msg_id"]
+
+    @API
+    async def create_group(
+        self,
+        *,
+        villa_id: int,
+        group_name: str,
+    ) -> int:
+        request = Request(
+            method="POST",
+            url=self.adapter.base_url / "createGroup",
+            headers=self.get_authorization_header(villa_id),
+            json={"group_name": group_name},
+        )
+        return (await self._request(request))["group_id"]
+
+    @API
+    async def edit_group(
+        self,
+        *,
+        villa_id: int,
+        group_id: int,
+        group_name: str,
+    ) -> None:
+        request = Request(
+            method="POST",
+            url=self.adapter.base_url / "editGroup",
+            headers=self.get_authorization_header(villa_id),
+            json={"group_id": group_id, "group_name": group_name},
+        )
+        await self._request(request)
+
+    @API
+    async def delete_group(
+        self,
+        *,
+        villa_id: int,
+        group_id: int,
+    ) -> None:
+        request = Request(
+            method="POST",
+            url=self.adapter.base_url / "deleteGroup",
+            headers=self.get_authorization_header(villa_id),
+            json={"group_id": group_id},
+        )
+        await self._request(request)
+
+    @API
+    async def get_group_list(self, *, villa_id: int) -> List[Group]:
+        request = Request(
+            method="GET",
+            url=self.adapter.base_url / "getGroupList",
+            headers=self.get_authorization_header(villa_id),
+        )
+        return parse_obj_as(List[Group], (await self._request(request))["list"])
+
+    @API
+    async def sort_group_list(
+        self,
+        *,
+        villa_id: int,
+        group_ids: List[int],
+    ) -> None:
+        request = Request(
+            method="POST",
+            url=self.adapter.base_url / "sortGroupList",
+            headers=self.get_authorization_header(villa_id),
+            json={"villa_id": villa_id, "group_ids": group_ids},
+        )
+        await self._request(request)
+
+    @API
+    async def edit_room(
+        self,
+        *,
+        villa_id: int,
+        room_id: int,
+        room_name: str,
+    ) -> None:
+        request = Request(
+            method="POST",
+            url=self.adapter.base_url / "editRoom",
+            headers=self.get_authorization_header(villa_id),
+            json={"room_id": room_id, "room_name": room_name},
+        )
+        await self._request(request)
+
+    @API
+    async def delete_room(
+        self,
+        *,
+        villa_id: int,
+        room_id: int,
+    ) -> None:
+        request = Request(
+            method="POST",
+            url=self.adapter.base_url / "deleteRoom",
+            headers=self.get_authorization_header(villa_id),
+            json={"room_id": room_id},
+        )
+        await self._request(request)
+
+    @API
+    async def get_room(
+        self,
+        *,
+        villa_id: int,
+        room_id: int,
+    ) -> Room:
+        request = Request(
+            method="GET",
+            url=self.adapter.base_url / "getRoom",
+            headers=self.get_authorization_header(villa_id),
+            json={"room_id": room_id},
+        )
+        return parse_obj_as(Room, (await self._request(request))["room"])
+
+    @API
+    async def get_villa_group_room_list(
+        self,
+        *,
+        villa_id: int,
+    ) -> List[GroupRoom]:
+        request = Request(
+            method="GET",
+            url=self.adapter.base_url / "getVillaGroupRoomList",
+            headers=self.get_authorization_header(villa_id),
+        )
+        return parse_obj_as(
+            List[GroupRoom],
+            (await self._request(request))["list"],
+        )
+
+    @API
+    async def sort_room_list(
+        self,
+        *,
+        villa_id: int,
+        room_list: List[RoomSort],
+    ) -> None:
+        request = Request(
+            method="POST",
+            url=self.adapter.base_url / "sortRoomList",
+            headers=self.get_authorization_header(villa_id),
+            json={
+                "villa_id": villa_id,
+                "room_list": [room.dict() for room in room_list],
+            },
+        )
+        await self._request(request)
+
+    @API
+    async def operate_member_to_role(
+        self,
+        *,
+        villa_id: int,
+        role_id: int,
+        uid: int,
+        is_add: bool,
+    ) -> None:
+        request = Request(
+            method="POST",
+            url=self.adapter.base_url / "operateMemberToRole",
+            headers=self.get_authorization_header(villa_id),
+            json={"role_id": role_id, "uid": uid, "is_add": is_add},
+        )
+        await self._request(request)
+
+    @API
+    async def create_member_role(
+        self,
+        *,
+        villa_id: int,
+        name: str,
+        color: Color,
+        permissions: List[Permission],
+    ) -> int:
+        request = Request(
+            method="POST",
+            url=self.adapter.base_url / "createMemberRole",
+            headers=self.get_authorization_header(villa_id),
+            json={"name": name, "color": str(color), "permissions": permissions},
+        )
+        return (await self._request(request))["id"]
+
+    @API
+    async def edit_member_role(
+        self,
+        *,
+        villa_id: int,
+        role_id: int,
+        name: str,
+        color: Color,
+        permissions: List[Permission],
+    ) -> None:
+        request = Request(
+            method="POST",
+            url=self.adapter.base_url / "editMemberRole",
+            headers=self.get_authorization_header(villa_id),
+            json={
+                "id": role_id,
+                "name": name,
+                "color": str(color),
+                "permissions": permissions,
+            },
+        )
+        await self._request(request)
+
+    @API
+    async def delete_member_role(
+        self,
+        *,
+        villa_id: int,
+        role_id: int,
+    ) -> None:
+        request = Request(
+            method="POST",
+            url=self.adapter.base_url / "deleteMemberRole",
+            headers=self.get_authorization_header(villa_id),
+            json={"id": role_id},
+        )
+        await self._request(request)
+
+    @API
+    async def get_member_role_info(
+        self,
+        *,
+        villa_id: int,
+        role_id: int,
+    ) -> MemberRoleDetail:
+        request = Request(
+            method="GET",
+            url=self.adapter.base_url / "getMemberRoleInfo",
+            headers=self.get_authorization_header(villa_id),
+            json={"role_id": role_id},
+        )
+        return parse_obj_as(
+            MemberRoleDetail,
+            (await self._request(request))["role"],
+        )
+
+    @API
+    async def get_villa_member_roles(
+        self,
+        *,
+        villa_id: int,
+    ) -> List[MemberRoleDetail]:
+        request = Request(
+            method="GET",
+            url=self.adapter.base_url / "getVillaMemberRoles",
+            headers=self.get_authorization_header(villa_id),
+        )
+        return parse_obj_as(
+            List[MemberRoleDetail],
+            (await self._request(request))["list"],
+        )
+
+    @API
+    async def get_all_emoticons(self) -> List[Emoticon]:
+        request = Request(
+            method="GET",
+            url=self.adapter.base_url / "getAllEmoticons",
+        )
+        return parse_obj_as(List[Emoticon], (await self._request(request))["list"])
+
+    @API
+    async def audit(
+        self,
+        *,
+        villa_id: int,
+        audit_content: str,
+        pass_through: str,
+        room_id: int,
+        uid: int,
+        content_type: ContentType,
+    ) -> str:
+        request = Request(
+            method="POST",
+            url=self.adapter.base_url / "audit",
+            headers=self.get_authorization_header(villa_id),
+            json={
+                "audit_content": audit_content,
+                "pass_through": pass_through,
+                "room_id": room_id,
+                "uid": uid,
+                "content_type": content_type,
+            },
+        )
+        return (await self._request(request))["audit_id"]
+
+    @API
+    async def transfer_image(
+        self,
+        *,
+        url: str,
+        villa_id: Optional[int] = None,
+    ) -> str:
+        request = Request(
+            method="POST",
+            url=self.adapter.base_url / "transferImage",
+            headers=self.get_authorization_header(villa_id or self.current_villd_id),
+            json={
+                "url": url,
+            },
+        )
+        return (await self._request(request))["new_url"]
+
+    @API
+    async def get_upload_image_params(
+        self,
+        *,
+        md5: str,
+        ext: str,
+        villa_id: Optional[int] = None,
+    ) -> UploadImageParamsReturn:
+        request = Request(
+            method="GET",
+            url=self.adapter.base_url / "getUploadImageParams",
+            headers=self.get_authorization_header(villa_id or self.current_villd_id),
+            params={
+                "md5": md5,
+                "ext": ext,
+            },
+        )
+        return parse_obj_as(UploadImageParamsReturn, await self._request(request))
+
+    async def upload_image(
+        self,
+        image: Union[bytes, BytesIO, Path],
+        ext: Optional[str] = None,
+        villa_id: Optional[int] = None,
+    ) -> ImageUploadResult:
+        if isinstance(image, Path):
+            image = image.read_bytes()
+        elif isinstance(image, BytesIO):
+            image = image.getvalue()
+        img_md5 = get_img_md5(image)
+        ext = ext or get_img_extenion(image)
+        if ext is None:
+            raise ValueError("cannot guess image extension")
+        upload_params = await self.get_upload_image_params(
+            md5=img_md5,
+            ext=ext,
+            villa_id=villa_id,
+        )
+        request = Request(
+            "POST",
+            url="https://mihoyo-community-web.oss-cn-shanghai.aliyuncs.com/",
+            data=upload_params.params.to_upload_data(),
+            files={"file": image},
+        )
+        return parse_obj_as(ImageUploadResult, await self.adapter.request(request))

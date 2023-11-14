@@ -9,8 +9,8 @@ from nonebot.utils import escape_tag
 
 from pydantic import root_validator
 
-from .api import MessageContentInfoGet, QuoteMessage, Robot
 from .message import Message, MessageSegment
+from .models import MessageContentInfoGet, QuoteMessage, Robot
 
 
 class EventType(IntEnum):
@@ -218,7 +218,7 @@ class SendMessageEvent(MessageEvent):
 
     @root_validator(pre=True)
     @classmethod
-    def _(cls, data: Dict[str, Any]):
+    def payload_to_event(cls, data: Dict[str, Any]):
         if not data.get("content"):
             return data
         msg = Message()

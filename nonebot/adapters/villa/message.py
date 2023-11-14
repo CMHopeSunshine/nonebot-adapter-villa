@@ -1,13 +1,27 @@
-from typing import Iterable, Optional, Type, Union
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Iterable, Literal, Optional, Type, Union
 from typing_extensions import Self, TypedDict, override
 
 from nonebot.adapters import (
     Message as BaseMessage,
     MessageSegment as BaseMessageSegment,
 )
-from nonebot.utils import escape_tag
 
-from .api.models import *
+from .models import (
+    Badge,
+    Image,
+    ImageMessageContent,
+    Link,
+    MentionedAll,
+    MentionedRobot,
+    MentionedUser,
+    MessageContentInfo,
+    PostMessageContent,
+    PreviewLink,
+    QuoteInfo,
+    TextMessageContent,
+    VillaRoomLink,
+)
 
 
 class MessageSegment(BaseMessageSegment["Message"]):
@@ -208,14 +222,15 @@ class MessageSegment(BaseMessageSegment["Message"]):
         return ImageSegment(
             "image",
             {
-                "image": Image(
-                    url=url,
-                    size=(
-                        ImageSize(width=width, height=height)
-                        if width and height
-                        else None
-                    ),
-                    file_size=file_size,
+                "image": Image.parse_obj(
+                    {
+                        "url": url,
+                        "size": {
+                            "width": width,
+                            "height": height,
+                        },
+                        "file_size": file_size,
+                    },
                 ),
             },
         )
@@ -299,126 +314,170 @@ class MessageSegment(BaseMessageSegment["Message"]):
         )
 
 
+class TextData(TypedDict):
+    text: str
+
+
+@dataclass
 class TextSegment(MessageSegment):
-    class Data(TypedDict):
-        text: str
-
-    data: Data
+    if TYPE_CHECKING:
+        type: Literal["text"]
+        data: TextData
 
     @override
     def __str__(self) -> str:
-        return escape_tag(self.data["text"])
+        return self.data["text"]
 
 
+class MentionRobotData(TypedDict):
+    mention_robot: MentionedRobot
+
+
+@dataclass
 class MentionRobotSegement(MessageSegment):
-    class Data(TypedDict):
-        mention_robot: MentionedRobot
-
-    data: Data
+    if TYPE_CHECKING:
+        type: Literal["mention_robot"]
+        data: MentionRobotData
 
     @override
     def __str__(self) -> str:
-        return repr(self.data["mention_robot"])
+        return f"<mention_robot:{self.data['mention_robot'].bot_id}>"
 
 
+class MentionUserData(TypedDict):
+    mention_user: MentionedUser
+    villa_id: Optional[int]
+
+
+@dataclass
 class MentionUserSegement(MessageSegment):
-    class Data(TypedDict):
-        mention_user: MentionedUser
-        villa_id: Optional[int]
-
-    data: Data
+    if TYPE_CHECKING:
+        type: Literal["mention_user"]
+        data: MentionUserData
 
     @override
     def __str__(self) -> str:
-        return repr(self.data["mention_user"])
+        return f"<mention_user:{self.data['mention_user'].user_id}>"
 
 
+class MentionAllData(TypedDict):
+    mention_all: MentionedAll
+
+
+@dataclass
 class MentionAllSegement(MessageSegment):
-    class Data(TypedDict):
-        mention_all: MentionedAll
-
-    data: Data
+    if TYPE_CHECKING:
+        type: Literal["mention_all"]
+        data: MentionAllData
 
     @override
     def __str__(self) -> str:
-        return repr(self.data["mention_all"])
+        return f"<mention_all:{self.data['mention_all'].show_text}>"
 
 
+class RoomLinkData(TypedDict):
+    room_link: VillaRoomLink
+
+
+@dataclass
 class RoomLinkSegment(MessageSegment):
-    class Data(TypedDict):
-        room_link: VillaRoomLink
-
-    data: Data
+    if TYPE_CHECKING:
+        type: Literal["room_link"]
+        data: RoomLinkData
 
     @override
     def __str__(self) -> str:
-        return repr(self.data["room_link"])
+        return f"<room_link:{self.data['room_link'].room_id}>"
 
 
+class LinkData(TypedDict):
+    link: Link
+
+
+@dataclass
 class LinkSegment(MessageSegment):
-    class Data(TypedDict):
-        link: Link
-
-    data: Data
+    if TYPE_CHECKING:
+        type: Literal["link"]
+        data: LinkData
 
     @override
     def __str__(self) -> str:
-        return repr(self.data["link"])
+        return f"<link:{self.data['link'].url}>"
 
 
+class ImageData(TypedDict):
+    image: Image
+
+
+@dataclass
 class ImageSegment(MessageSegment):
-    class Data(TypedDict):
-        image: Image
-
-    data: Data
+    if TYPE_CHECKING:
+        type: Literal["image"]
+        data: ImageData
 
     @override
     def __str__(self) -> str:
-        return repr(self.data["image"])
+        return f"<image:{self.data['image'].url}>"
 
 
+class QuoteData(TypedDict):
+    quote: QuoteInfo
+
+
+@dataclass
 class QuoteSegment(MessageSegment):
-    class Data(TypedDict):
-        quote: QuoteInfo
-
-    data: Data
+    if TYPE_CHECKING:
+        type: Literal["quote"]
+        data: QuoteData
 
     @override
     def __str__(self) -> str:
-        return repr(self.data["quote"])
+        return f"<quote:{self.data['quote'].quoted_message_id}>"
 
 
+class PostData(TypedDict):
+    post: PostMessageContent
+
+
+@dataclass
 class PostSegment(MessageSegment):
-    class Data(TypedDict):
-        post: PostMessageContent
-
-    data: Data
+    if TYPE_CHECKING:
+        type: Literal["post"]
+        data: PostData
 
     @override
     def __str__(self) -> str:
-        return repr(self.data["post"])
+        return f"<post:{self.data['post'].post_id}>"
 
 
+class PreviewLinkData(TypedDict):
+    preview_link: PreviewLink
+
+
+@dataclass
 class PreviewLinkSegment(MessageSegment):
-    class Data(TypedDict):
-        preview_link: PreviewLink
-
-    data: Data
+    if TYPE_CHECKING:
+        type: Literal["preview_link"]
+        data: PreviewLinkData
 
     @override
     def __str__(self) -> str:
-        return repr(self.data["preview_link"])
+        return f"<preview_link:{self.data['preview_link'].title}>"
 
 
+class BadgeData(TypedDict):
+    badge: Badge
+
+
+@dataclass
 class BadgeSegment(MessageSegment):
-    class Data(TypedDict):
-        badge: Badge
-
-    data: Data
+    if TYPE_CHECKING:
+        type: Literal["badge"]
+        data: BadgeData
 
     @override
     def __str__(self) -> str:
-        return repr(self.data["badge"])
+        return f"<badge:{self.data['badge'].text}>"
 
 
 class Message(BaseMessage[MessageSegment]):

@@ -3,6 +3,7 @@ import inspect
 import json
 import sys
 from typing import Any, Dict, List, Literal, Optional, Union
+from typing_extensions import TypeAlias
 
 from pydantic import BaseModel, Field, validator
 
@@ -197,8 +198,7 @@ class TextMessageContent(BaseModel):
     badge: Optional[Badge] = None
 
 
-class ImageMessageContent(Image):
-    pass
+ImageMessageContent: TypeAlias = Image
 
 
 class MentionedInfo(BaseModel):
@@ -412,6 +412,58 @@ class ContentType(str, Enum):
     IMAGE = "AuditContentTypeImage"
 
 
+# 图片部分
+# see https://webstatic.mihoyo.com/vila/bot/doc/img_api/upload.html
+
+
+class CallbackVar(BaseModel):
+    x_extra: str = Field(alias="x:extra")
+
+
+class ImageUploadParams(BaseModel):
+    accessid: str
+    callback: str
+    callback_var: CallbackVar
+    dir: str
+    expire: str
+    host: str
+    name: str
+    policy: str
+    signature: str
+    x_oss_content_type: str
+    object_acl: str
+    content_disposition: str
+    key: str
+    success_action_status: str
+
+    def to_upload_data(self) -> Dict[str, Any]:
+        return {
+            "x:extra": self.callback_var.x_extra,
+            "OSSAccessKeyId": self.accessid,
+            "signature": self.signature,
+            "success_action_status": self.success_action_status,
+            "name": self.name,
+            "callback": self.callback,
+            "x-oss-content-type": self.x_oss_content_type,
+            "key": self.key,
+            "policy": self.policy,
+            "Content-Disposition": self.content_disposition,
+        }
+
+
+class UploadImageParamsReturn(BaseModel):
+    type: str
+    file_name: str
+    max_file_size: int
+    params: ImageUploadParams
+
+
+class ImageUploadResult(BaseModel):
+    object: str
+    secret_url: str
+    url: str
+
+
 for _, obj in inspect.getmembers(sys.modules[__name__]):
     if inspect.isclass(obj) and issubclass(obj, BaseModel):
         obj.update_forward_refs()
@@ -468,4 +520,6 @@ __all__ = [
     "Color",
     "Emoticon",
     "ContentType",
+    "ImageUploadParams",
+    "UploadImageParamsReturn",
 ]
