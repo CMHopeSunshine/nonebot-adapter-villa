@@ -2,12 +2,12 @@ from datetime import datetime
 from enum import IntEnum
 import json
 from typing import Any, Dict, Literal, Optional, Union
-from typing_extensions import override
+from typing_extensions import Annotated, override
 
 from nonebot.adapters import Event as BaseEvent
 from nonebot.utils import escape_tag
 
-from pydantic import root_validator
+from pydantic import Field, root_validator
 
 from .message import Message, MessageSegment
 from .models import MessageContentInfoGet, QuoteMessage, Robot
@@ -22,6 +22,7 @@ class EventType(IntEnum):
     DeleteRobot = 4
     AddQuickEmoticon = 5
     AuditCallback = 6
+    ClickMsgComponent = 7
 
 
 class AuditResult(IntEnum):
@@ -285,6 +286,13 @@ class SendMessageEvent(MessageEvent):
                         int(entity_detail["room_id"]),
                     ),
                 )
+            elif entity_detail["type"] == "style":
+                msg.append(
+                    MessageSegment.text(
+                        entity_text,
+                        **{entity_detail["font_style"]: True},
+                    ),
+                )
             else:
                 entity_detail["show_text"] = entity_text
                 msg.append(
@@ -444,13 +452,36 @@ class AuditCallbackEvent(NoticeEvent):
         )
 
 
-event_classes = Union[
-    JoinVillaEvent,
-    SendMessageEvent,
-    CreateRobotEvent,
-    DeleteRobotEvent,
-    AddQuickEmoticonEvent,
-    AuditCallbackEvent,
+class ClickMsgComponentEvent(NoticeEvent):
+    type: Literal[EventType.ClickMsgComponent] = EventType.ClickMsgComponent
+    villa_id: int
+    """大别野 ID"""
+    room_id: int
+    """房间 ID"""
+    uid: int
+    """用户 ID"""
+    msg_uid: str
+    """消息 ID"""
+    bot_msg_id: Optional[str] = None
+    """如果被回复的消息从属于机器人，则该字段不为空字符串"""
+    component_id: str
+    """机器人自定义的组件id"""
+    template_id: str
+    """如果该组件模板为已创建模板，则template_id不为0"""
+    extra: str
+    """机器人自定义透传信息"""
+
+
+event_classes = Annotated[
+    Union[
+        JoinVillaEvent,
+        SendMessageEvent,
+        CreateRobotEvent,
+        DeleteRobotEvent,
+        AddQuickEmoticonEvent,
+        AuditCallbackEvent,
+    ],
+    Field(discriminator="type"),
 ]
 
 

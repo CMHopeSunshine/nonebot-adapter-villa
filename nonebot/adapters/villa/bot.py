@@ -3,7 +3,16 @@ import hashlib
 import hmac
 from io import BytesIO
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, NoReturn, Optional, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    NoReturn,
+    Optional,
+    Union,
+    cast,
+)
 from typing_extensions import override
 from urllib.parse import urlencode
 
@@ -31,6 +40,7 @@ from .exception import (
 )
 from .message import (
     BadgeSegment,
+    ComponentsSegment,
     ImageSegment,
     LinkSegment,
     MentionAllSegement,
@@ -38,6 +48,7 @@ from .message import (
     MentionUserSegement,
     Message,
     MessageSegment,
+    PanelSegment,
     PostSegment,
     PreviewLinkSegment,
     QuoteSegment,
@@ -49,6 +60,7 @@ from .models import (
     CheckMemberBotAccessTokenReturn,
     Color,
     Command,
+    Component,
     ContentType,
     Emoticon,
     Group,
@@ -63,6 +75,7 @@ from .models import (
     MentionedInfo,
     MentionType,
     MessageContentInfo,
+    Panel,
     Permission,
     PostMessageContent,
     Robot,
@@ -70,6 +83,7 @@ from .models import (
     RoomSort,
     TextEntity,
     TextMessageContent,
+    TextStyle,
     UploadImageParamsReturn,
     Villa,
     VillaRoomLink,
@@ -321,7 +335,11 @@ class Bot(BaseBot):
             villa_id=villa_id,
             room_id=room_id,
             object_name=object_name,
-            msg_content=content_info.json(by_alias=True, exclude_none=True),
+            msg_content=content_info.json(
+                by_alias=True,
+                exclude_none=True,
+                ensure_ascii=False,
+            ),
         )
 
     @override
@@ -378,7 +396,7 @@ class Bot(BaseBot):
         返回:
             MessageContentInfo: 消息内容对象
         """
-        quote = image = post = badge = preview_link = None
+        quote = image = post = badge = preview_link = panel = None
         if quote_seg := cast(Optional[List[QuoteSegment]], message["quote"] or None):
             quote = quote_seg[-1].data["quote"]
         if image_seg := cast(
@@ -395,6 +413,14 @@ class Bot(BaseBot):
             message["preview_link"] or None,
         ):
             preview_link = preview_link_seg[-1].data["preview_link"]
+        if panel_seg := cast(Optional[List[PanelSegment]], message["panel"] or None):
+            panel = panel_seg[-1].data["panel"]
+        if panel is None:
+            components: List[Component] = []
+            for com in message["components"]:
+                components.extend(cast(ComponentsSegment, com).data["components"])
+            if components:
+                panel = _parse_components(components)
 
         def cal_len(x):
             return len(x.encode("utf-16")) // 2 - 1
@@ -409,6 +435,15 @@ class Bot(BaseBot):
                 if isinstance(seg, TextSegment):
                     seg_text = seg.data["text"]
                     length = cal_len(seg_text)
+                    for style in {"bold", "italic", "underline", "strikethrough"}:
+                        if seg.data[style]:
+                            entities.append(
+                                TextEntity(
+                                    offset=message_offset,
+                                    length=length,
+                                    entity=TextStyle(font_style=style),  # type: ignore
+                                ),
+                            )
                 elif isinstance(seg, MentionAllSegement):
                     mention_all: MentionedAll = seg.data["mention_all"]
                     seg_text = f"@{mention_all.show_text} "
@@ -516,7 +551,12 @@ class Bot(BaseBot):
                 badge=badge,
             )
 
-        return MessageContentInfo(content=content, mentionedInfo=mentioned, quote=quote)
+        return MessageContentInfo(
+            content=content,
+            mentionedInfo=mentioned,
+            quote=quote,
+            panel=panel,
+        )
 
     @API
     async def check_member_bot_access_token(
@@ -643,7 +683,11 @@ class Bot(BaseBot):
         msg_content: Union[str, MessageContentInfo],
     ) -> str:
         if isinstance(msg_content, MessageContentInfo):
-            content = msg_content.json(by_alias=True, exclude_none=True)
+            content = msg_content.json(
+                by_alias=True,
+                exclude_none=True,
+                ensure_ascii=False,
+            )
         else:
             content = msg_content
         request = Request(
@@ -657,6 +701,22 @@ class Bot(BaseBot):
             },
         )
         return (await self._request(request))["bot_msg_id"]
+
+    @API
+    async def create_component_template(
+        self,
+        *,
+        panel: Panel,
+    ) -> int:
+        request = Request(
+            method="POST",
+            url=self.adapter.base_url / "createComponentTemplate",
+            headers=self.get_authorization_header(),
+            json={
+                "panel": panel.json(exclude_none=True, ensure_ascii=False),
+            },
+        )
+        return (await self._request(request))["template_id"]
 
     @API
     async def create_group(
@@ -952,12 +1012,11 @@ class Bot(BaseBot):
         self,
         *,
         url: str,
-        villa_id: Optional[int] = None,
     ) -> str:
         request = Request(
             method="POST",
             url=self.adapter.base_url / "transferImage",
-            headers=self.get_authorization_header(villa_id or self.current_villd_id),
+            headers=self.get_authorization_header(),
             json={
                 "url": url,
             },
@@ -970,12 +1029,11 @@ class Bot(BaseBot):
         *,
         md5: str,
         ext: str,
-        villa_id: Optional[int] = None,
     ) -> UploadImageParamsReturn:
         request = Request(
             method="GET",
             url=self.adapter.base_url / "getUploadImageParams",
-            headers=self.get_authorization_header(villa_id or self.current_villd_id),
+            headers=self.get_authorization_header(),
             params={
                 "md5": md5,
                 "ext": ext,
@@ -987,7 +1045,6 @@ class Bot(BaseBot):
         self,
         image: Union[bytes, BytesIO, Path],
         ext: Optional[str] = None,
-        villa_id: Optional[int] = None,
     ) -> ImageUploadResult:
         if isinstance(image, Path):
             image = image.read_bytes()
@@ -1000,7 +1057,6 @@ class Bot(BaseBot):
         upload_params = await self.get_upload_image_params(
             md5=img_md5,
             ext=ext,
-            villa_id=villa_id,
         )
         request = Request(
             "POST",
@@ -1009,3 +1065,43 @@ class Bot(BaseBot):
             files={"file": image},
         )
         return parse_obj_as(ImageUploadResult, await self._request(request))
+
+
+def _parse_components(components: List[Component]) -> Optional[Panel]:
+    small_total = [[]]
+    mid_total = [[]]
+    big_total = [[]]
+    for com in components:
+        com_lenght = len(com.text.encode("utf-8"))
+        if com_lenght <= 0:
+            log("warning", f"component {com.id} text is empty, ignore")
+        elif com_lenght <= 6:
+            small_total[-1].append(com)
+            if len(small_total[-1]) >= 3:
+                small_total.append([])
+        elif com_lenght <= 12:
+            mid_total[-1].append(com)
+            if len(mid_total[-1]) >= 3:
+                mid_total.append([])
+        elif com_lenght <= 30:
+            big_total[-1].append(com)
+            if len(big_total[-1]) >= 3:
+                big_total.append([])
+        else:
+            log("warning", f"component {com.id} text is too long, ignore")
+    if not small_total[-1]:
+        small_total.pop()
+    small_total = small_total or None
+    if not mid_total[-1]:
+        mid_total.pop()
+    mid_total = mid_total or None
+    if not big_total[-1]:
+        big_total.pop()
+    big_total = big_total or None
+    if small_total or mid_total or big_total:
+        return Panel(
+            small_component_group_list=small_total,
+            mid_component_group_list=mid_total,
+            big_component_group_list=big_total,
+        )
+    return None

@@ -81,7 +81,13 @@ VILLA_BOTS='
 ## 已支持消息段
 
 - `MessageSegment.text`: 纯文本
-  + 米游社自带表情也是用text来发送，以[表情名]格式，例如MessageSegment.text("[爱心]")
+  + 米游社自带表情也是用text来发送，以[表情名]格式，例如：MessageSegment.text("[爱心]")
+  + 支持样式:
+    + `bold`: 加粗
+    + `italic`: 斜体
+    + `underline`: 下划线
+    + `strikethrough`: 删除线
+  + 例如：MessageSegment.text("加粗", blod=True) + MessageSegment.text("斜体", italic=True)
 - `MessageSegment.mention_robot`: @机器人
 - `MessageSegment.mention_user`: @用户
   + `user_name` 和 `villa_id` 必须给出其中之一，给 `villa_id` 时，调用 api 来获取用户名
@@ -108,6 +114,9 @@ VILLA_BOTS='
   + 该消息段未在官方文档公开
   + 不能**单独**使用，要与其他消息段一起使用
   + 无法在 web 端显示出来
+- 消息组件，有两种构造方式：
+  + `MessageSegment.components`：传入若干个component，适配器会自动根据组件显示的文本长度来计算组件面板布局(推荐)
+  + `MessageSegment.panel`：传入一个组件模板 ID 或自己构造好的自定义组件面板布局 `Panel` 对象
 
 
 
@@ -176,8 +185,64 @@ async def _(event: SendMessageEvent, args: Message = CommandArg()):
     await matcher.finish(msg)
 
 ```
-
 使用命令`@bot /test 纯文本`时，bot会回复`这是一段纯文本`
+
+
+关于消息组件的详细介绍：
+
+```python
+from nonebot.adapters.villa.message import MessageSegment
+from nonebot.adapters.villa.models import CallbackButton, InputButton, LinkButton, Panel
+
+# 目前有三种按钮组件，每个组件都必须有 id 和 text 字段
+# id字段用于标识组件，必须是唯一的，text字段用于显示组件的文本
+# need_callback字段如果设为True，表示点击按钮后会触发ClickMsgComponentEvent事件回调
+# extra字段用于开发者自定义，可以在事件回调中获取到
+
+# 文本按钮
+# 用户点击后，会将按钮的 input 字段内容填充到用户的输入框中
+input_button = InputButton(
+    id="1",
+    text="文本按钮",
+    input="/文本",
+)
+
+# 回调按钮
+# need_callback恒为True，点击按钮后会触发ClickMsgComponentEvent事件回调
+callback_button = CallbackButton(
+    id="2",
+    text="回调按钮",
+)
+
+# 链接按钮
+# 用户点击后，会跳转到按钮的 link 字段所指定的链接
+# need_token字段为True时，会在链接中附带token参数，用于验证用户身份
+link_button = LinkButton(
+    id="3",
+    text="链接按钮",
+    link="https://www.baidu.com",
+    need_token=True,
+)
+
+# 构造消息段
+com_msg = MessageSegment.components(
+    input_button,
+    callback_button,
+    link_button,
+)
+
+# 适配器会自动根据每个组件的text字段的长度，自动调整按钮的排版
+# 如果需要自定义排版，可以使用MessageSegment.panel方法
+# 自己构造好Panel对象，传入
+panel = Panel(mid_component_group_list=[[input_button, callback_button], [link_button]])
+com_msg = MessageSegment.panel(panel)
+
+# 如果有预先设置好的消息组件模板 ID，可以直接使用
+template_id = 123456
+com_msg = MessageSegment.panel(template_id)
+
+# 如果有多个 MessageSegment.panel 相加，则只会发送最后一个
+```
 
 
 ## 交流、建议和反馈

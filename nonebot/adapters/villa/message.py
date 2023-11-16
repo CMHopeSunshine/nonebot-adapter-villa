@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Iterable, Literal, Optional, Type, Union
+from typing import TYPE_CHECKING, Iterable, List, Literal, Optional, Type, Union
 from typing_extensions import Self, TypedDict, override
 
 from nonebot.adapters import (
@@ -9,6 +9,7 @@ from nonebot.adapters import (
 
 from .models import (
     Badge,
+    Component,
     Image,
     ImageMessageContent,
     Link,
@@ -16,6 +17,7 @@ from .models import (
     MentionedRobot,
     MentionedUser,
     MessageContentInfo,
+    Panel,
     PostMessageContent,
     PreviewLink,
     QuoteInfo,
@@ -53,7 +55,13 @@ class MessageSegment(BaseMessageSegment["Message"]):
         return self.type == "text"
 
     @staticmethod
-    def text(text: str) -> "TextSegment":
+    def text(
+        text: str,
+        bold: bool = False,
+        italic: bool = False,
+        strikethrough: bool = False,
+        underline: bool = False,
+    ) -> "TextSegment":
         """纯文本消息段
 
         参数:
@@ -62,7 +70,16 @@ class MessageSegment(BaseMessageSegment["Message"]):
         返回:
             TextSegment: 消息段对象
         """
-        return TextSegment("text", {"text": text})
+        return TextSegment(
+            "text",
+            {
+                "text": text,
+                "bold": bold,
+                "italic": italic,
+                "strikethrough": strikethrough,
+                "underline": underline,
+            },
+        )
 
     @staticmethod
     def mention_robot(bot_id: str, bot_name: str) -> "MentionRobotSegement":
@@ -313,9 +330,33 @@ class MessageSegment(BaseMessageSegment["Message"]):
             },
         )
 
+    @staticmethod
+    def components(*components: Component) -> "ComponentsSegment":
+        return ComponentsSegment(
+            "components",
+            {
+                "components": list(components),
+            },
+        )
+
+    @staticmethod
+    def panel(panel: Union[Panel, int]) -> "PanelSegment":
+        if isinstance(panel, int):
+            panel = Panel(template_id=panel)
+        return PanelSegment(
+            "panel",
+            {
+                "panel": panel,
+            },
+        )
+
 
 class TextData(TypedDict):
     text: str
+    bold: bool
+    italic: bool
+    strikethrough: bool
+    underline: bool
 
 
 @dataclass
@@ -480,6 +521,36 @@ class BadgeSegment(MessageSegment):
         return f"<badge:{self.data['badge'].text}>"
 
 
+class ComponentsData(TypedDict):
+    components: List[Component]
+
+
+@dataclass
+class ComponentsSegment(MessageSegment):
+    if TYPE_CHECKING:
+        type: Literal["components"]
+        data: ComponentsData
+
+    @override
+    def __str__(self) -> str:
+        return f"<components:{self.data['components']}>"
+
+
+class PanelData(TypedDict):
+    panel: Panel
+
+
+@dataclass
+class PanelSegment(MessageSegment):
+    if TYPE_CHECKING:
+        type: Literal["panel"]
+        data: PanelData
+
+    @override
+    def __str__(self) -> str:
+        return f"<panel:{self.data['panel']}>"
+
+
 class Message(BaseMessage[MessageSegment]):
     @classmethod
     @override
@@ -562,6 +633,17 @@ class Message(BaseMessage[MessageSegment]):
                             int(entity_detail.villa_id),
                             int(entity_detail.room_id),
                             entity_detail.room_name,
+                        ),
+                    )
+                elif entity_detail.type == "style":
+                    msg.append(
+                        MessageSegment.text(
+                            text[
+                                ((offset + 1) * 2) : ((offset + length + 1) * 2)
+                            ].decode(
+                                "utf-16",
+                            ),
+                            **{entity_detail.font_style: True},
                         ),
                     )
                 else:

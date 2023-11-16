@@ -149,10 +149,22 @@ class Link(BaseModel):
     show_text: str = Field(exclude=True)
 
 
+class TextStyle(BaseModel):
+    type: Literal["style"] = Field(default="style", repr=False)
+    font_style: Literal["bold", "italic", "strikethrough", "underline"]
+
+
 class TextEntity(BaseModel):
     offset: int
     length: int
-    entity: Union[MentionedRobot, MentionedUser, MentionedAll, VillaRoomLink, Link]
+    entity: Union[
+        MentionedRobot,
+        MentionedUser,
+        MentionedAll,
+        VillaRoomLink,
+        Link,
+        TextStyle,
+    ]
 
 
 class ImageSize(BaseModel):
@@ -233,6 +245,60 @@ class User(BaseModel):
         return v
 
 
+class ComponentType(IntEnum):
+    Button = 1
+
+
+class Component(BaseModel):
+    id: str
+    text: str
+    type: ComponentType = Field(default=ComponentType.Button, init=False)
+    need_callback: Optional[bool] = None
+    extra: str = ""
+
+
+ComponentGroup = List[Component]
+
+
+class Panel(BaseModel):
+    template_id: Optional[int] = None
+    small_component_group_list: Optional[List[ComponentGroup]] = None
+    mid_component_group_list: Optional[List[ComponentGroup]] = None
+    big_component_group_list: Optional[List[ComponentGroup]] = None
+
+
+class ButtonType(IntEnum):
+    Callback = 1
+    Input = 2
+    Link = 3
+
+
+class Button(Component):
+    c_type: ButtonType
+    input: Optional[str]
+    link: Optional[str]
+    need_token: Optional[bool]
+
+
+class CallbackButton(Button):
+    c_type: Literal[ButtonType.Callback] = Field(
+        default=ButtonType.Callback,
+        init=False,
+    )
+    need_callback: Literal[True] = True
+
+
+class InputButton(Button):
+    c_type: Literal[ButtonType.Input] = Field(default=ButtonType.Input, init=False)
+    input: str
+
+
+class LinkButton(Button):
+    c_type: Literal[ButtonType.Link] = Field(default=ButtonType.Link, init=False)
+    link: str
+    need_token: bool = False
+
+
 class Trace(BaseModel):
     visual_room_version: str
     app_version: str
@@ -247,6 +313,7 @@ class MessageContentInfo(BaseModel):
     content: Union[TextMessageContent, ImageMessageContent, PostMessageContent]
     mentioned_info: Optional[MentionedInfo] = Field(default=None, alias="mentionedInfo")
     quote: Optional[QuoteInfo] = None
+    panel: Optional[Panel] = None
 
 
 class MessageContentInfoGet(MessageContentInfo):
@@ -492,6 +559,7 @@ __all__ = [
     "MentionedAll",
     "VillaRoomLink",
     "Link",
+    "TextStyle",
     "TextEntity",
     "TextMessageContent",
     "ImageMessageContent",
@@ -499,6 +567,13 @@ __all__ = [
     "MentionedInfo",
     "QuoteInfo",
     "User",
+    "Component",
+    "Panel",
+    "ButtonType",
+    "Button",
+    "CallbackButton",
+    "InputButton",
+    "LinkButton",
     "Trace",
     "ImageSize",
     "Image",
