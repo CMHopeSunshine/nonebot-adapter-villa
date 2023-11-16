@@ -425,7 +425,15 @@ class Bot(BaseBot):
         def cal_len(x):
             return len(x.encode("utf-16")) // 2 - 1
 
-        message = message.exclude("quote", "image", "post", "badge", "preview_link")
+        message = message.exclude(
+            "quote",
+            "image",
+            "post",
+            "badge",
+            "preview_link",
+            "components",
+            "panel",
+        )
         message_text = ""
         message_offset = 0
         entities: List[TextEntity] = []
@@ -529,7 +537,7 @@ class Bot(BaseBot):
             mentioned = None
 
         if not (message_text or entities):
-            if preview_link or badge:
+            if preview_link or badge or panel:
                 content = TextMessageContent(
                     text="\u200b",
                     preview_link=preview_link,
