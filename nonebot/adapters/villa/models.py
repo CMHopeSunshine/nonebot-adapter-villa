@@ -286,17 +286,23 @@ class CallbackButton(Button):
         init=False,
     )
     need_callback: Literal[True] = True
+    input: Optional[str] = Field(default=None, init=False)
+    link: Optional[str] = Field(default=None, init=False)
+    need_token: Optional[bool] = Field(default=None, init=False)
 
 
 class InputButton(Button):
     c_type: Literal[ButtonType.Input] = Field(default=ButtonType.Input, init=False)
     input: str
+    link: Optional[str] = Field(default=None, init=False)
+    need_token: Optional[bool] = Field(default=None, init=False)
 
 
 class LinkButton(Button):
     c_type: Literal[ButtonType.Link] = Field(default=ButtonType.Link, init=False)
     link: str
     need_token: bool = False
+    input: Optional[str] = Field(default=None, init=False)
 
 
 class Trace(BaseModel):
