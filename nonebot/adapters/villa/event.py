@@ -115,11 +115,8 @@ class JoinVillaEvent(NoticeEvent):
     """用户昵称"""
     join_at: int
     """用户加入时间的时间戳"""
-
-    @property
-    def villa_id(self) -> int:
-        """大别野ID"""
-        return self.robot.villa_id
+    villa_id: int
+    """大别野 ID"""
 
     @override
     def get_event_description(self) -> str:
@@ -161,6 +158,8 @@ class SendMessageEvent(MessageEvent):
     """消息ID"""
     bot_msg_id: Optional[str] = None
     """如果被回复的消息从属于机器人，则该字段不为空字符串"""
+    villa_id: int
+    """大别野 ID"""
     quote_msg: Optional[QuoteMessage] = None
     """回调消息引用消息的基础信息"""
 
@@ -180,11 +179,6 @@ class SendMessageEvent(MessageEvent):
     def reply(self) -> Optional[QuoteMessage]:
         """消息的回复信息"""
         return self.quote_msg
-
-    @property
-    def villa_id(self) -> int:
-        """大别野ID"""
-        return self.robot.villa_id
 
     @override
     def get_event_description(self) -> str:
@@ -380,6 +374,8 @@ class AddQuickEmoticonEvent(NoticeEvent):
     """如果被回复的消息从属于机器人，则该字段不为空字符串"""
     is_cancel: bool = False
     """是否是取消表情"""
+    emoticon_type: int
+    """表情类型"""
 
     @override
     def get_user_id(self) -> str:
@@ -466,7 +462,7 @@ class ClickMsgComponentEvent(NoticeEvent):
     """如果被回复的消息从属于机器人，则该字段不为空字符串"""
     component_id: str
     """机器人自定义的组件id"""
-    template_id: str
+    template_id: int
     """如果该组件模板为已创建模板，则template_id不为0"""
     extra: str
     """机器人自定义透传信息"""

@@ -25,9 +25,19 @@ class BotAuth(BaseModel):
 
 # http事件回调部分
 # see https://webstatic.mihoyo.com/vila/bot/doc/callback.html
+class CommandParam(BaseModel):
+    desc: str
+
+
 class Command(BaseModel):
     name: str
     desc: Optional[str] = None
+    params: Optional[List[CommandParam]] = None
+
+
+class TemplateCustomSettings(BaseModel):
+    name: str
+    url: str
 
 
 class Template(BaseModel):
@@ -36,6 +46,8 @@ class Template(BaseModel):
     desc: Optional[str] = None
     icon: str
     commands: Optional[List[Command]] = None
+    custom_settings: Optional[List[TemplateCustomSettings]] = None
+    is_allowed_add_to_other_villa: Optional[bool] = None
 
 
 class Robot(BaseModel):
@@ -245,14 +257,10 @@ class User(BaseModel):
         return v
 
 
-class ComponentType(IntEnum):
-    Button = 1
-
-
 class Component(BaseModel):
     id: str
     text: str
-    type: ComponentType = Field(default=ComponentType.Button, init=False)
+    type: int = 1
     need_callback: Optional[bool] = None
     extra: str = ""
 
@@ -275,9 +283,9 @@ class ButtonType(IntEnum):
 
 class Button(Component):
     c_type: ButtonType
-    input: Optional[str]
-    link: Optional[str]
-    need_token: Optional[bool]
+    input: Optional[str] = None
+    link: Optional[str] = None
+    need_token: Optional[bool] = None
 
 
 class CallbackButton(Button):
@@ -286,23 +294,17 @@ class CallbackButton(Button):
         init=False,
     )
     need_callback: Literal[True] = True
-    input: Optional[str] = Field(default=None, init=False)
-    link: Optional[str] = Field(default=None, init=False)
-    need_token: Optional[bool] = Field(default=None, init=False)
 
 
 class InputButton(Button):
     c_type: Literal[ButtonType.Input] = Field(default=ButtonType.Input, init=False)
     input: str
-    link: Optional[str] = Field(default=None, init=False)
-    need_token: Optional[bool] = Field(default=None, init=False)
 
 
 class LinkButton(Button):
     c_type: Literal[ButtonType.Link] = Field(default=ButtonType.Link, init=False)
     link: str
-    need_token: bool = False
-    input: Optional[str] = Field(default=None, init=False)
+    need_token: bool
 
 
 class Trace(BaseModel):
@@ -541,6 +543,16 @@ class ImageUploadResult(BaseModel):
     url: str
 
 
+# Websocket 部分
+# see https://webstatic.mihoyo.com/vila/bot/doc/websocket/websocket_api.html
+class WebsocketInfo(BaseModel):
+    websocket_url: str
+    websocket_conn_uid: int
+    app_id: int
+    platform: int
+    device_id: str
+
+
 for _, obj in inspect.getmembers(sys.modules[__name__]):
     if inspect.isclass(obj) and issubclass(obj, BaseModel):
         obj.update_forward_refs()
@@ -607,4 +619,5 @@ __all__ = [
     "ContentType",
     "ImageUploadParams",
     "UploadImageParamsReturn",
+    "WebsocketInfo",
 ]

@@ -9,6 +9,8 @@ from nonebot.exception import (
 )
 
 if TYPE_CHECKING:
+    from betterproto import Message
+
     from .api import ApiResponse
 
 
@@ -21,8 +23,27 @@ class NoLogException(BaseNoLogException, VillaAdapterException):
     pass
 
 
+class ReconnectError(VillaAdapterException):
+    def __init__(self, payload: Optional["Message"] = None):
+        super().__init__()
+        self.payload = payload
+
+    def __repr__(self) -> str:
+        if self.payload is None:
+            return "Receive unexpected data, reconnect."
+        return f"Reconnect because of {self.payload}"
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
+
+class DisconnectError(VillaAdapterException):
+    ...
+
+
 class ActionFailed(BaseActionFailed, VillaAdapterException):
     def __init__(self, status_code: int, response: "ApiResponse"):
+        super().__init__()
         self.status_code = status_code
         self.response = response
 

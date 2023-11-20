@@ -87,6 +87,7 @@ from .models import (
     UploadImageParamsReturn,
     Villa,
     VillaRoomLink,
+    WebsocketInfo,
 )
 from .utils import API, get_img_extenion, get_img_md5, log
 
@@ -187,6 +188,8 @@ class Bot(BaseBot):
         self.pub_key = rsa.PublicKey.load_pkcs1_openssl_pem(bot_info.pub_key.encode())
         self.verify_event = bot_info.verify_event
         self._bot_info: Optional[Robot] = None
+        self._ws_info: Optional[WebsocketInfo] = None
+        self._ws_squence: int = 0
 
     @override
     def __repr__(self) -> str:
@@ -231,6 +234,16 @@ class Bot(BaseBot):
         if not self._bot_info:
             raise ValueError(f"Bot {self.self_id} hasn't received any events yet.")
         return self._bot_info.villa_id
+
+    @property
+    def ws_info(self) -> WebsocketInfo:
+        if self._ws_info is None:
+            raise RuntimeError(f"Bot {self.self_id} is not connected!")
+        return self._ws_info
+
+    @ws_info.setter
+    def ws_info(self, ws_info: WebsocketInfo):
+        self._ws_info = ws_info
 
     async def handle_event(self, event: Event):
         """处理事件"""
@@ -425,15 +438,7 @@ class Bot(BaseBot):
         def cal_len(x):
             return len(x.encode("utf-16")) // 2 - 1
 
-        message = message.exclude(
-            "quote",
-            "image",
-            "post",
-            "badge",
-            "preview_link",
-            "components",
-            "panel",
-        )
+        message = message.exclude("quote", "image", "post", "badge", "preview_link")
         message_text = ""
         message_offset = 0
         entities: List[TextEntity] = []
@@ -537,7 +542,7 @@ class Bot(BaseBot):
             mentioned = None
 
         if not (message_text or entities):
-            if preview_link or badge or panel:
+            if preview_link or badge:
                 content = TextMessageContent(
                     text="\u200b",
                     preview_link=preview_link,
@@ -1074,11 +1079,21 @@ class Bot(BaseBot):
         )
         return parse_obj_as(ImageUploadResult, await self._request(request))
 
+    async def get_websocket_info(
+        self,
+    ) -> WebsocketInfo:
+        request = Request(
+            method="GET",
+            url=self.adapter.base_url / "getWebsocketInfo",
+            headers=self.get_authorization_header(),
+        )
+        return parse_obj_as(WebsocketInfo, await self._request(request))
+
 
 def _parse_components(components: List[Component]) -> Optional[Panel]:
     small_total = [[]]
     mid_total = [[]]
-    big_total = [[]]
+    big_total = []
     for com in components:
         com_lenght = len(com.text.encode("utf-8"))
         if com_lenght <= 0:
@@ -1092,9 +1107,7 @@ def _parse_components(components: List[Component]) -> Optional[Panel]:
             if len(mid_total[-1]) >= 2:
                 mid_total.append([])
         elif com_lenght <= 30:
-            big_total[-1].append(com)
-            if len(big_total[-1]) >= 1:
-                big_total.append([])
+            big_total[-1].append([com])
         else:
             log("warning", f"component {com.id} text is too long, ignore")
     if not small_total[-1]:
@@ -1103,8 +1116,6 @@ def _parse_components(components: List[Component]) -> Optional[Panel]:
     if not mid_total[-1]:
         mid_total.pop()
     mid_total = mid_total or None
-    if not big_total[-1]:
-        big_total.pop()
     big_total = big_total or None
     if small_total or mid_total or big_total:
         return Panel(

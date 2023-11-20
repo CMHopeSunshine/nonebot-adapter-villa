@@ -16,6 +16,7 @@ packages = [{ include = "nonebot" }]
 python = "^3.8"
 nonebot2 = "^2.1.2"
 rsa = "^4.9"
+betterproto = "^1.2.5"
 
 
 [tool.poetry.group.dev.dependencies]

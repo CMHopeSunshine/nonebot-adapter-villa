@@ -331,11 +331,11 @@ class MessageSegment(BaseMessageSegment["Message"]):
         )
 
     @staticmethod
-    def components(*components: Component) -> "ComponentsSegment":
+    def components(components: List[Component]) -> "ComponentsSegment":
         return ComponentsSegment(
             "components",
             {
-                "components": list(components),
+                "components": components,
             },
         )
 
