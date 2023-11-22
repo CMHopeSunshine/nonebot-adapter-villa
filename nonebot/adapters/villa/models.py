@@ -99,7 +99,7 @@ class MemberBasic(BaseModel):
     uid: int
     nickname: str
     introduce: str
-    avatar: int
+    avatar: str
     avatar_url: str
 
 
