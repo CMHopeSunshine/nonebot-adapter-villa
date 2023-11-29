@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import IntEnum
 import struct
-from typing import Dict, Literal
+from typing import Dict, List, Literal
 
 import betterproto
 from pydantic import BaseModel
@@ -86,7 +86,7 @@ class HeartBeat(betterproto.Message):
     def to_bytes_package(self, id: int) -> bytes:
         return Payload(
             id=id,
-            flag=2,
+            flag=1,
             biz_type=BizType.P_HEARTBEAT,
             body_data=self.SerializeToString(),
         ).to_bytes()
@@ -127,7 +127,7 @@ class Login(betterproto.Message):
     def to_bytes_package(self, id: int) -> bytes:
         return Payload(
             id=id,
-            flag=2,
+            flag=1,
             biz_type=BizType.P_LOGIN,
             body_data=self.SerializeToString(),
         ).to_bytes()
@@ -165,7 +165,7 @@ class Logout(betterproto.Message):
     def to_bytes_package(self, id: int) -> bytes:
         return Payload(
             id=id,
-            flag=2,
+            flag=1,
             biz_type=BizType.P_LOGOUT,
             body_data=self.SerializeToString(),
         ).to_bytes()
@@ -206,3 +206,188 @@ class KickOff(betterproto.Message):
 @dataclass
 class Shutdown(betterproto.Message):
     """服务关机"""
+
+
+@dataclass
+class RobotTemplate(betterproto.Message):
+    id: str = betterproto.string_field(1)
+    name: str = betterproto.string_field(2)
+    desc: str = betterproto.string_field(3)
+    icon: str = betterproto.string_field(4)
+    commands: List["RobotTemplateCommand"] = betterproto.message_field(5)
+    custom_settings: List["RobotTemplateCustomSetting"] = betterproto.message_field(6)
+    is_allowed_add_to_other_villa: bool = betterproto.bool_field(7)
+
+
+@dataclass
+class RobotTemplateParam(betterproto.Message):
+    desc: str = betterproto.string_field(1)
+
+
+@dataclass
+class RobotTemplateCommand(betterproto.Message):
+    name: str = betterproto.string_field(1)
+    desc: str = betterproto.string_field(2)
+    params: List["RobotTemplateParam"] = betterproto.message_field(3)
+
+
+@dataclass
+class RobotTemplateCustomSetting(betterproto.Message):
+    name: str = betterproto.string_field(1)
+    url: str = betterproto.string_field(2)
+
+
+@dataclass
+class Robot(betterproto.Message):
+    template: "RobotTemplate" = betterproto.message_field(1)
+    villa_id: int = betterproto.uint64_field(2)
+
+
+@dataclass
+class QuoteMessageInfo(betterproto.Message):
+    content: str = betterproto.string_field(1)
+    msg_uid: str = betterproto.string_field(2)
+    send_at: int = betterproto.int64_field(3)
+    msg_type: str = betterproto.string_field(4)
+    bot_msg_id: str = betterproto.string_field(5)
+    from_user_id: int = betterproto.uint64_field(6)
+    from_user_id_str: str = betterproto.string_field(7)
+    from_user_nickname: str = betterproto.string_field(8)
+
+
+class RobotEventEventType(betterproto.Enum):
+    UnknowRobotEventType = 0
+    JoinVilla = 1
+    SendMessage = 2
+    CreateRobot = 3
+    DeleteRobot = 4
+    AddQuickEmoticon = 5
+    AuditCallback = 6
+    ClickMsgComponent = 7
+
+
+@dataclass
+class RobotEvent(betterproto.Message):
+    robot: "Robot" = betterproto.message_field(1)
+    type: "RobotEventEventType" = betterproto.enum_field(2)
+    extend_data: "RobotEventExtendData" = betterproto.message_field(3)
+    created_at: int = betterproto.int64_field(4)
+    id: str = betterproto.string_field(5)
+    send_at: int = betterproto.int64_field(6)
+
+
+@dataclass
+class RobotEventExtendData(betterproto.Message):
+    join_villa: "RobotEventExtendDataJoinVillaInfo" = betterproto.message_field(
+        1,
+        group="event_data",
+    )
+    send_message: "RobotEventExtendDataSendMessageInfo" = betterproto.message_field(
+        2,
+        group="event_data",
+    )
+    create_robot: "RobotEventExtendDataCreateRobotInfo" = betterproto.message_field(
+        3,
+        group="event_data",
+    )
+    delete_robot: "RobotEventExtendDataDeleteRobotInfo" = betterproto.message_field(
+        4,
+        group="event_data",
+    )
+    add_quick_emoticon: (
+        "RobotEventExtendDataAddQuickEmoticonInfo"
+    ) = betterproto.message_field(5, group="event_data")
+    audit_callback: "RobotEventExtendDataAuditCallbackInfo" = betterproto.message_field(
+        6,
+        group="event_data",
+    )
+    click_msg_component: (
+        "RobotEventExtendDataClickMsgComponentInfo"
+    ) = betterproto.message_field(7, group="event_data")
+
+
+@dataclass
+class RobotEventExtendDataJoinVillaInfo(betterproto.Message):
+    join_uid: int = betterproto.uint64_field(1)
+    join_user_nickname: str = betterproto.string_field(2)
+    join_at: int = betterproto.int64_field(3)
+    villa_id: int = betterproto.uint64_field(4)
+
+
+class ObjectName(betterproto.Enum):
+    UnknowObjectName = 0
+    Text = 1
+    Post = 2
+
+
+@dataclass
+class RobotEventExtendDataSendMessageInfo(betterproto.Message):
+    content: str = betterproto.string_field(1)
+    from_user_id: int = betterproto.uint64_field(2)
+    send_at: int = betterproto.int64_field(3)
+    object_name: ObjectName = betterproto.enum_field(4)
+    room_id: int = betterproto.uint64_field(5)
+    nickname: str = betterproto.string_field(6)
+    msg_uid: str = betterproto.string_field(7)
+    bot_msg_id: str = betterproto.string_field(8)
+    villa_id: int = betterproto.uint64_field(9)
+    quote_msg: "QuoteMessageInfo" = betterproto.message_field(10)
+
+
+@dataclass
+class RobotEventExtendDataCreateRobotInfo(betterproto.Message):
+    villa_id: int = betterproto.uint64_field(1)
+
+
+@dataclass
+class RobotEventExtendDataDeleteRobotInfo(betterproto.Message):
+    villa_id: int = betterproto.uint64_field(1)
+
+
+@dataclass
+class RobotEventExtendDataAddQuickEmoticonInfo(betterproto.Message):
+    villa_id: int = betterproto.uint64_field(1)
+    room_id: int = betterproto.uint64_field(2)
+    uid: int = betterproto.uint64_field(3)
+    emoticon_id: int = betterproto.uint32_field(4)
+    emoticon: str = betterproto.string_field(5)
+    msg_uid: str = betterproto.string_field(6)
+    is_cancel: bool = betterproto.bool_field(7)
+    bot_msg_id: str = betterproto.string_field(8)
+    emoticon_type: int = betterproto.uint32_field(9)
+
+
+class RobotEventExtendDataAuditCallbackInfoAuditResult(betterproto.Enum):
+    None_ = 0
+    Pass = 1
+    Reject = 2
+
+
+@dataclass
+class RobotEventExtendDataAuditCallbackInfo(betterproto.Message):
+    audit_id: str = betterproto.string_field(1)
+    bot_tpl_id: str = betterproto.string_field(2)
+    villa_id: int = betterproto.uint64_field(3)
+    room_id: int = betterproto.uint64_field(4)
+    user_id: int = betterproto.uint64_field(5)
+    pass_through: str = betterproto.string_field(6)
+    audit_result: (
+        RobotEventExtendDataAuditCallbackInfoAuditResult
+    ) = betterproto.enum_field(7)
+
+
+@dataclass
+class RobotEventExtendDataClickMsgComponentInfo(betterproto.Message):
+    villa_id: int = betterproto.uint64_field(1)
+    room_id: int = betterproto.uint64_field(2)
+    component_id: str = betterproto.string_field(3)
+    msg_uid: str = betterproto.string_field(4)
+    uid: int = betterproto.uint64_field(5)
+    bot_msg_id: str = betterproto.string_field(6)
+    template_id: int = betterproto.uint64_field(7)
+    extra: str = betterproto.string_field(8)
+
+
+@dataclass
+class RobotEventMessage(betterproto.Message):
+    event: "RobotEvent" = betterproto.message_field(1)

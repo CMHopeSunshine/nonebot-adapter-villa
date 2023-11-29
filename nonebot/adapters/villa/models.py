@@ -547,7 +547,7 @@ class ImageUploadResult(BaseModel):
 # see https://webstatic.mihoyo.com/vila/bot/doc/websocket/websocket_api.html
 class WebsocketInfo(BaseModel):
     websocket_url: str
-    websocket_conn_uid: int
+    uid: int
     app_id: int
     platform: int
     device_id: str

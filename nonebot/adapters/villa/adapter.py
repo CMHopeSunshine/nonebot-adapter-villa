@@ -23,7 +23,12 @@ from pydantic import parse_obj_as
 
 from .bot import Bot
 from .config import BotInfo, Config
-from .event import Event, event_classes, pre_handle_event
+from .event import (
+    Event,
+    event_classes,
+    pre_handle_event_websocket,
+    pre_handle_webhook_event,
+)
 from .exception import ApiNotAvailable, DisconnectError, ReconnectError
 from .models import WebsocketInfo
 from .payload import (
@@ -36,12 +41,15 @@ from .payload import (
     Logout,
     LogoutReply,
     Payload,
+    RobotEvent,
     Shutdown,
 )
 from .utils import API, log
 
 
 class Adapter(BaseAdapter):
+    bots: Dict[str, Bot]
+
     @override
     def __init__(self, driver: Driver, **kwargs: Any):
         super().__init__(driver, **kwargs)
@@ -59,7 +67,7 @@ class Adapter(BaseAdapter):
     def _setup(self):
         self.driver.on_startup(self._forward_http)
         self.driver.on_startup(self._start_forward)
-        self.driver.on_shutdown(self._stop_forward)
+        self.driver.on_shutdown(self._stop_forwards)
 
     async def _forward_http(self):
         webhook_bots = [
@@ -103,7 +111,10 @@ class Adapter(BaseAdapter):
             json_data = json.loads(data)
             if payload_data := json_data.get("event"):
                 try:
-                    event = parse_obj_as(event_classes, pre_handle_event(payload_data))
+                    event = parse_obj_as(
+                        event_classes,
+                        pre_handle_webhook_event(payload_data),
+                    )
                     bot_id = event.bot_id
                     if (bot := self.bots.get(bot_id, None)) is None:
                         if (
@@ -195,7 +206,7 @@ class Adapter(BaseAdapter):
         bot_config: BotInfo,
         ws_info: WebsocketInfo,
     ) -> None:
-        request = Request(method="GET", url=URL(ws_info.websocket_url), timeout=30)
+        request = Request(method="GET", url=URL(ws_info.websocket_url), timeout=30.0)
         heartbeat_task: Optional["asyncio.Task"] = None
         while True:
             try:
@@ -219,9 +230,8 @@ class Adapter(BaseAdapter):
 
                         # 处理事件
                         await self._loop(bot, ws)
-                    except DisconnectError:
-                        log("DEBUG", "Disconnected from server")
-                        break
+                    except DisconnectError as e:
+                        raise e
                     except ReconnectError as e:
                         log("ERROR", str(e), e)
                     except WebSocketClosed as e:
@@ -233,7 +243,7 @@ class Adapter(BaseAdapter):
                     except Exception as e:
                         log(
                             "ERROR",
-                            (  # noqa: E501
+                            (
                                 "<r><bg #f8bbd0>Error while process data from"
                                 f" websocket {escape_tag(ws_info.websocket_url)}. "
                                 "Trying to reconnect...</bg #f8bbd0></r>"
@@ -248,6 +258,8 @@ class Adapter(BaseAdapter):
                         if heartbeat_task:
                             heartbeat_task.cancel()
                             heartbeat_task = None
+            except DisconnectError:
+                return
             except Exception as e:
                 log(
                     "ERROR",
@@ -260,11 +272,24 @@ class Adapter(BaseAdapter):
                 )
                 await asyncio.sleep(3.0)
 
-    async def _stop_forward(self) -> None:
-        for bot, task in zip(self.ws.items(), self.tasks):
-            await self._logout(self.bots[bot[0]], bot[1])  # type: ignore
-            if not task.done():
-                task.cancel()
+    async def _stop_forwards(self) -> None:
+        await asyncio.gather(
+            *[
+                self._stop_forward(self.bots[bot[0]], bot[1], task)
+                for bot, task in zip(self.ws.items(), self.tasks)
+            ],
+        )
+
+    async def _stop_forward(
+        self,
+        bot: Bot,
+        ws: WebSocket,
+        task: "asyncio.Task",
+    ) -> None:
+        await self._logout(bot, ws)
+        await asyncio.sleep(1.0)
+        if not task.done():
+            task.cancel()
 
     async def _login(
         self,
@@ -275,13 +300,14 @@ class Adapter(BaseAdapter):
     ):
         try:
             login = Login(
-                ws_info.websocket_conn_uid,
+                ws_info.uid,
                 str(bot_config.test_villa_id or 0)
                 + f".{bot_config.bot_secret}.{bot_config.bot_id}",
                 ws_info.platform,
                 ws_info.app_id,
                 ws_info.device_id,
             )
+            log("TRACE", f"Sending Login {escape_tag(repr(login))}")
             await ws.send_bytes(login.to_bytes_package(bot._ws_squence))
             bot._ws_squence += 1
 
@@ -316,7 +342,7 @@ class Adapter(BaseAdapter):
         try:
             await ws.send_bytes(
                 Logout(
-                    uid=bot.ws_info.websocket_conn_uid,
+                    uid=bot.ws_info.uid,
                     platform=bot.ws_info.platform,
                     app_id=bot.ws_info.app_id,
                     device_id=bot.ws_info.device_id,
@@ -325,17 +351,6 @@ class Adapter(BaseAdapter):
             bot._ws_squence += 1
         except Exception as e:
             log("WARNING", "Error while sending logout, Ignored!", e)
-        login_reply = await self.receive_payload(ws)
-        if not isinstance(login_reply, LogoutReply):
-            log(
-                "ERROR",
-                "Received unexpected event while logout: "
-                f"{escape_tag(repr(login_reply))}",
-            )
-        if bot.self_id in self.bots:
-            self.ws.pop(bot.self_id)
-            self.bot_disconnect(bot)
-        raise DisconnectError
 
     async def _heartbeat(self, bot: Bot, ws: WebSocket):
         while True:
@@ -355,15 +370,17 @@ class Adapter(BaseAdapter):
             payload = await self.receive_payload(ws)
             if not payload:
                 raise ReconnectError
-            log(
-                "TRACE",
-                f"Received payload: {escape_tag(repr(payload))}",
-            )
             if isinstance(payload, HeartBeatReply):
                 log("TRACE", f"Heartbeat ACK in {payload.server_timestamp}")
                 continue
             if isinstance(payload, (LogoutReply, KickOff)):
-                raise DisconnectError
+                if isinstance(payload, KickOff):
+                    log("WARNING", f"Bot {bot.self_id} kicked off by server: {payload}")
+                    raise DisconnectError
+                log("INFO", f"<y>Bot {bot.self_id} disconnected: {payload}</y>")
+                if bot.self_id in self.bots:
+                    self.ws.pop(bot.self_id)
+                    self.bot_disconnect(bot)
             if isinstance(payload, Event):
                 bot._bot_info = payload.robot
                 asyncio.create_task(bot.handle_event(payload))
@@ -379,17 +396,24 @@ class Adapter(BaseAdapter):
             else:
                 payload = HeartBeatReply.FromString(payload.body_data)
             if payload.code != 0:
+                if isinstance(payload, LogoutReply):
+                    log("WARNING", f"Error when logout from server: {payload}")
+                    return payload
                 raise ReconnectError(payload)
-            return payload
         elif payload.biz_type == BizType.P_KICK_OFF:
-            return KickOff.FromString(payload.body_data)
+            payload = KickOff.FromString(payload.body_data)
         elif payload.biz_type == BizType.SHUTDOWN:
-            return Shutdown()
+            payload = Shutdown()
         elif payload.biz_type == BizType.EVENT:
-            event_data = json.loads(payload.body_data).get("event")
-            return parse_obj_as(event_classes, pre_handle_event(event_data))
+            event_data = RobotEvent.FromString(payload.body_data)
+            return parse_obj_as(
+                event_classes,
+                pre_handle_event_websocket(event_data),
+            )
         else:
             raise ReconnectError
+        log("TRACE", f"Received payload: {escape_tag(repr(payload))}")
+        return payload
 
     @override
     async def _call_api(self, bot: Bot, api: str, **data: Any) -> Any:

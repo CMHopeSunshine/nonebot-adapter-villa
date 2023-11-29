@@ -39,40 +39,59 @@ nb adapter install nonebot-adapter-villa
 
 修改 NoneBot 配置文件 `.env` 或者 `.env.*`。
 
-### Driver
-
-本适配器同时需要`ReverseDriver`和`ForwardDriver`，参考 [driver](https://v2.nonebot.dev/docs/next/advanced/driver#%E9%A9%B1%E5%8A%A8%E5%99%A8%E7%B1%BB%E5%9E%8B) 配置项。
-
-例如：
-
-```dotenv
-DRIVER=~fastapi+~httpx
-```
-
-### VILLA_BOTS
-
-配置 Bot 帐号列表，每个bot有4个必填配置，可前往[「大别野开放平台」](https://open.miyoushe.com/#/login)(ID: `OpenVilla`)申请，取得以下配置：
+配置 Bot 帐号列表，每个 bot 有 3 个必填配置，可前往[「大别野开放平台」](https://open.miyoushe.com/#/login)申请，取得以下配置：
 
 - `bot_id`: 机器人id，以`bot_`开头
 - `bot_secret`: 机器人密钥
-- `pub_key`: 加密和验证所需的 pub_key
-- `callback_url`: http回调地址 endpoint，例如申请bot时给的回调地址是`http://域名/your/callback/url`，那么配置里的`callback_url`填写`/your/callback/url`
+- `pub_key`: 加密和验证所需的 pub_key (请使用开放平台中的复制按钮而不是手动复制)
 
-此外还有以下选填配置：
+此外，还要根据连接方式填写额外配置：
 
-- `verify_event`：是否对回调事件签名进行验证
+- `connection_type`: 连接方式，填写 `webhook` 或 `websocket`，默认为 `webhook`
 
-例如：
+### Webhook 连接
+
+- `callback_url`: http 回调地址 endpoint，例如开放平台中回调地址是`http://域名/your/callback/url`，那么配置里的 `callback_url` 填写 `/your/callback/url`
+- `verify_event`：是否对回调事件签名进行验证，默认为 `True`
+
+使用 webhook 方式连接时，驱动器需要 `ReverseDriver` 和 `ForwardDriver`，参考 [driver](https://v2.nonebot.dev/docs/next/advanced/driver#%E9%A9%B1%E5%8A%A8%E5%99%A8%E7%B1%BB%E5%9E%8B) 配置项。
+
+webhook 配置完整示例：
 
 ```dotenv
+DRIVER=~fastapi+~httpx
 VILLA_BOTS='
 [
   {
     "bot_id": "bot_123456789",
     "bot_secret": "abc123def456",
     "pub_key": "-----BEGIN PUBLIC KEY-----\nyour_pub_key\n-----END PUBLIC KEY-----\n",
+    "connection_type": "webhook",
     "callback_url": "/your/callback/url",
     "verify_event": true
+  }
+]
+'
+```
+
+### Websocket 连接 (官方测试中)
+
+- `test_villa_id`: 未上线时填写调试别野的id，已上传公域 bot 填写 `0`
+
+使用 websocket 方式连接时，驱动器需要 `ForwardDriver`，参考 [driver](https://v2.nonebot.dev/docs/next/advanced/driver#%E9%A9%B1%E5%8A%A8%E5%99%A8%E7%B1%BB%E5%9E%8B) 配置项。
+
+websocket 配置完整示例：
+
+```dotenv
+DRIVER=~httpx+~websocket
+VILLA_BOTS='
+[
+  {
+    "bot_id": "bot_123456789",
+    "bot_secret": "abc123def456",
+    "pub_key": "-----BEGIN PUBLIC KEY-----\nyour_pub_key\n-----END PUBLIC KEY-----\n",
+    "connection_type": "websocket",
+    "test_villa_id": 0
   }
 ]
 '
