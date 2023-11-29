@@ -180,13 +180,13 @@ class TextEntity(BaseModel):
 
 
 class ImageSize(BaseModel):
-    width: int
-    height: int
+    width: Optional[int] = None
+    height: Optional[int] = None
 
 
 class Image(BaseModel):
     url: str
-    size: Optional[ImageSize] = None
+    size: ImageSize = Field(default_factory=ImageSize)
     file_size: Optional[int] = None
 
 
