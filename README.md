@@ -41,9 +41,10 @@ nb adapter install nonebot-adapter-villa
 
 配置 Bot 帐号列表，每个 bot 有 3 个必填配置，可前往[「大别野开放平台」](https://open.miyoushe.com/#/login)申请，取得以下配置：
 
-- `bot_id`: 机器人id，以`bot_`开头
+- `bot_id`: 机器人 id，以`bot_`开头
 - `bot_secret`: 机器人密钥
 - `pub_key`: 加密和验证所需的 pub_key (请使用开放平台中的复制按钮而不是手动复制)
+- `test_villa_id`: Bot 未上线时填写调试别野的id，已上线可不填或填 `0`
 
 此外，还要根据连接方式填写额外配置：
 
@@ -75,8 +76,6 @@ VILLA_BOTS='
 ```
 
 ### Websocket 连接 (官方测试中)
-
-- `test_villa_id`: 未上线时填写调试别野的id，已上传公域 bot 填写 `0`
 
 使用 websocket 方式连接时，驱动器需要 `ForwardDriver`，参考 [driver](https://v2.nonebot.dev/docs/next/advanced/driver#%E9%A9%B1%E5%8A%A8%E5%99%A8%E7%B1%BB%E5%9E%8B) 配置项。
 
