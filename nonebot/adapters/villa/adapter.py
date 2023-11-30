@@ -301,8 +301,8 @@ class Adapter(BaseAdapter):
         try:
             login = Login(
                 ws_info.uid,
-                str(bot_config.test_villa_id or 0)
-                + f".{bot_config.bot_secret}.{bot_config.bot_id}",
+                str(bot_config.test_villa_id)
+                + f".{bot.bot_secret_encrypt}.{bot.self_id}",
                 ws_info.platform,
                 ws_info.app_id,
                 ws_info.device_id,

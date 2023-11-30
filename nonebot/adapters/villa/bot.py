@@ -187,6 +187,7 @@ class Bot(BaseBot):
         ).hexdigest()
         self.pub_key = rsa.PublicKey.load_pkcs1_openssl_pem(bot_info.pub_key.encode())
         self.verify_event = bot_info.verify_event
+        self.test_villa_id = bot_info.test_villa_id
         self._bot_info: Optional[Robot] = None
         self._ws_info: Optional[WebsocketInfo] = None
         self._ws_squence: int = 0
@@ -282,7 +283,9 @@ class Bot(BaseBot):
         return {
             "x-rpc-bot_id": self.self_id,
             "x-rpc-bot_secret": self.bot_secret_encrypt,
-            "x-rpc-bot_villa_id": str(villa_id or ""),
+            "x-rpc-bot_villa_id": str(
+                villa_id if villa_id is not None else self.test_villa_id,
+            ),
         }
 
     async def _handle_respnose(self, response: Response) -> Any:
@@ -611,7 +614,7 @@ class Bot(BaseBot):
             method="GET",
             url=self.adapter.base_url / "getMember",
             headers=self.get_authorization_header(villa_id),
-            json={"uid": uid},
+            params={"uid": uid},
         )
         return parse_obj_as(Member, (await self._request(request))["member"])
 
@@ -627,7 +630,7 @@ class Bot(BaseBot):
             method="GET",
             url=self.adapter.base_url / "getVillaMembers",
             headers=self.get_authorization_header(villa_id),
-            json={"offset": offset, "size": size},
+            params={"offset": offset, "size": size},
         )
         return parse_obj_as(MemberListReturn, await self._request(request))
 
@@ -843,7 +846,7 @@ class Bot(BaseBot):
             method="GET",
             url=self.adapter.base_url / "getRoom",
             headers=self.get_authorization_header(villa_id),
-            json={"room_id": room_id},
+            params={"room_id": room_id},
         )
         return parse_obj_as(Room, (await self._request(request))["room"])
 
@@ -964,7 +967,7 @@ class Bot(BaseBot):
             method="GET",
             url=self.adapter.base_url / "getMemberRoleInfo",
             headers=self.get_authorization_header(villa_id),
-            json={"role_id": role_id},
+            params={"role_id": role_id},
         )
         return parse_obj_as(
             MemberRoleDetail,
@@ -992,6 +995,7 @@ class Bot(BaseBot):
         request = Request(
             method="GET",
             url=self.adapter.base_url / "getAllEmoticons",
+            headers=self.get_authorization_header(),
         )
         return parse_obj_as(List[Emoticon], (await self._request(request))["list"])
 
@@ -1042,11 +1046,12 @@ class Bot(BaseBot):
         *,
         md5: str,
         ext: str,
+        villa_id: Optional[int] = None,
     ) -> UploadImageParamsReturn:
         request = Request(
             method="GET",
             url=self.adapter.base_url / "getUploadImageParams",
-            headers=self.get_authorization_header(),
+            headers=self.get_authorization_header(villa_id),
             params={
                 "md5": md5,
                 "ext": ext,
@@ -1058,7 +1063,21 @@ class Bot(BaseBot):
         self,
         image: Union[bytes, BytesIO, Path],
         ext: Optional[str] = None,
+        villa_id: Optional[int] = None,
     ) -> ImageUploadResult:
+        """上传图片
+
+        参数:
+            image: 图片内容/路径
+            ext: 图片拓展，不填时自动判断
+            villa_id: 上传所在的大别野 ID，不传时使用测试别野 ID
+
+        异常:
+            ValueError: 无法获取图片拓展名
+
+        返回:
+            ImageUploadResult: 上传结果
+        """
         if isinstance(image, Path):
             image = image.read_bytes()
         elif isinstance(image, BytesIO):
@@ -1070,6 +1089,7 @@ class Bot(BaseBot):
         upload_params = await self.get_upload_image_params(
             md5=img_md5,
             ext=ext,
+            villa_id=villa_id,
         )
         request = Request(
             "POST",

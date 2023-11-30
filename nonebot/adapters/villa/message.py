@@ -180,6 +180,7 @@ class MessageSegment(BaseMessageSegment["Message"]):
         参数:
             url: 链接
             show_text: 链接显示的文本
+            requires_bot_access_token: 跳转链接时是否带上含有用户信息的token
 
         返回:
             LinkSegment: 消息段对象
