@@ -377,7 +377,7 @@ class Adapter(BaseAdapter):
                 if isinstance(payload, KickOff):
                     log("WARNING", f"Bot {bot.self_id} kicked off by server: {payload}")
                     raise DisconnectError
-                log("INFO", f"<y>Bot {bot.self_id} disconnected: {payload}</y>")
+                log("INFO", f"<y>Bot {bot.self_id} disconnected</y>")
                 if bot.self_id in self.bots:
                     self.ws.pop(bot.self_id)
                     self.bot_disconnect(bot)

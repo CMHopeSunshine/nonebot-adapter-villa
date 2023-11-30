@@ -27,9 +27,9 @@ _✨ 大别野 协议适配 ✨_
 
 ## 安装
 
-在`nb create`创建项目时选择`Villa`适配器
+在 `nb create` 创建项目时选择 `Villa` 适配器
 
-或在现有`NoneBot2`项目目录下使用脚手架安装：
+或在现有 `NoneBot2` 项目目录下使用脚手架安装：
 
 ```
 nb adapter install nonebot-adapter-villa
@@ -44,7 +44,7 @@ nb adapter install nonebot-adapter-villa
 - `bot_id`: 机器人 id，以`bot_`开头
 - `bot_secret`: 机器人密钥
 - `pub_key`: 加密和验证所需的 pub_key (请使用开放平台中的复制按钮而不是手动复制)
-- `test_villa_id`: Bot 未上线时填写调试别野的id，已上线可不填或填 `0`
+- `test_villa_id`: Bot 未上线时填写调试别野的 id，已上线可不填或填 `0`
 
 此外，还要根据连接方式填写额外配置：
 
@@ -82,7 +82,7 @@ VILLA_BOTS='
 websocket 配置完整示例：
 
 ```dotenv
-DRIVER=~httpx+~websocket
+DRIVER=~httpx+~websockets
 VILLA_BOTS='
 [
   {
@@ -99,22 +99,22 @@ VILLA_BOTS='
 ## 已支持消息段
 
 - `MessageSegment.text`: 纯文本
-  + 米游社自带表情也是用text来发送，以[表情名]格式，例如：MessageSegment.text("[爱心]")
-  + 支持样式:
+  + 米游社自带表情也是用text来发送，以[表情名]格式，例如：`MessageSegment.text("[爱心]")`
+  + 支持样式,，可叠加:
     + `bold`: 加粗
     + `italic`: 斜体
     + `underline`: 下划线
     + `strikethrough`: 删除线
-  + 例如：MessageSegment.text("加粗", blod=True) + MessageSegment.text("斜体", italic=True)
+  + 例如：`MessageSegment.text("加粗", blod=True) + MessageSegment.text("斜体", italic=True)`
 - `MessageSegment.mention_robot`: @机器人
 - `MessageSegment.mention_user`: @用户
   + `user_name` 和 `villa_id` 必须给出其中之一，给 `villa_id` 时，调用 api 来获取用户名
 - `MessageSegment.mention_all`: @全体成员
 - `MessageSegment.room_link`: #房间跳转链接
 - `MessageSegment.link`: 超链接
-  + 使用link的话链接能够点击进行跳转，使用text的话不能点击
-  + 字段 `show_text` 是指链接显示的文字，但若指定了该字段，Web端大别野会无法正常跳转
-  + 字段 `requires_bot_access_token` 为true时，跳转链接会带上含有用户信息的token
+  + 使用 link 的话链接能够点击进行跳转，使用 text 的话不能点击
+  + 字段 `show_text` 是指链接显示的文字，但若指定了该字段，Web 端大别野会无法正常跳转
+  + 字段 `requires_bot_access_token` 为 True 时，跳转链接会带上含有用户信息的 token
 - `MessageSegment.quote`: 引用(回复)消息
   + 不能**单独**使用，要与其他消息段一起使用
 - `MessageSegment.image`: URL 图片
@@ -133,7 +133,7 @@ VILLA_BOTS='
   + 不能**单独**使用，要与其他消息段一起使用
   + 无法在 web 端显示出来
 - 消息组件，有两种构造方式：
-  + `MessageSegment.components`：传入若干个component，适配器会自动根据组件显示的文本长度来计算组件面板布局(推荐)
+  + `MessageSegment.components`：传入若干个 component，适配器会自动根据组件显示的文本长度来计算组件面板布局(推荐)
   + `MessageSegment.panel`：传入一个组件模板 ID 或自己构造好的自定义组件面板布局 `Panel` 对象
 
 
@@ -258,6 +258,7 @@ com_msg = MessageSegment.panel(panel)
 # 如果有预先设置好的消息组件模板 ID，可以直接使用
 template_id = 123456
 com_msg = MessageSegment.panel(template_id)
+# 模板通过 Bot.create_component_template 接口来创建
 
 # 如果有多个 MessageSegment.panel 相加，则只会发送最后一个
 ```

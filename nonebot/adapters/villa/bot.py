@@ -1127,7 +1127,7 @@ def _parse_components(components: List[Component]) -> Optional[Panel]:
             if len(mid_total[-1]) >= 2:
                 mid_total.append([])
         elif com_lenght <= 30:
-            big_total[-1].append([com])
+            big_total.append([com])
         else:
             log("warning", f"component {com.id} text is too long, ignore")
     if not small_total[-1]:
