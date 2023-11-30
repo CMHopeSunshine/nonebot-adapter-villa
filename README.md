@@ -121,7 +121,7 @@ VILLA_BOTS='
   + 图片 url 需为米哈游官方图床 url
   + 非官方图床 url 可以通过 `Bot.transfer_image` 接口转换为官方图床 url
   + 本地图片可以通过 `Bot.upload_image` 接口来上传图片，使用返回结果的 url 来发送
-  + 多张图片拼接时，只会发送最后一张图片
+  + 一条消息只能发送一张图片，多张图片拼接时，只会发送最后一张
   + 与其他消息段拼接时，将无法在 web 端显示出来
 - `MessageSegment.post`: 米游社帖子
   + 只能单独发送，与其他消息段拼接时将会被忽略
@@ -266,11 +266,11 @@ com_msg = MessageSegment.panel(template_id)
 
 ## 交流、建议和反馈
 
-大别野 Bot 和本适配器均为开发测试中，如遇问题请提出 [issue](https://github.com/CMHopeSunshine/nonebot-adapter-villa/issues) ，感谢支持！
+如遇问题请提出 [issue](https://github.com/CMHopeSunshine/nonebot-adapter-villa/issues) ，感谢支持！
 
-也欢迎来开发者的大别野[「尘世闲游」]((https://dby.miyoushe.com/chat/1047/21652))(ID: `wgiJNaU`)进行交流~
+欢迎来开发者的大别野[「尘世闲游」]((https://dby.miyoushe.com/chat/1047/21652))(ID: `wgiJNaU`)进行交流~
 
 ## 相关项目
 
 - [NoneBot2](https://github.com/nonebot/nonebot2): 非常好用的 Python 跨平台机器人框架！
-- [villa-py](https://github.com/CMHopeSunshine/villa-py): 大别野 Bot Python SDK。
+- [villa-py](https://github.com/CMHopeSunshine/villa-py): 大别野 Bot Python SDK（暂时停更）。

@@ -545,7 +545,7 @@ class Bot(BaseBot):
             mentioned = None
 
         if not (message_text or entities):
-            if preview_link or badge:
+            if preview_link or badge or panel:
                 content = TextMessageContent(
                     text="\u200b",
                     preview_link=preview_link,
