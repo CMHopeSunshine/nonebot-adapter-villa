@@ -26,8 +26,6 @@ from .config import BotInfo, Config
 from .event import (
     Event,
     event_classes,
-    pre_handle_event_websocket,
-    pre_handle_webhook_event,
 )
 from .exception import ApiNotAvailable, DisconnectError, ReconnectError
 from .models import WebsocketInfo
@@ -41,8 +39,8 @@ from .payload import (
     Logout,
     LogoutReply,
     Payload,
-    RobotEvent,
     Shutdown,
+    proto_to_event_data,
 )
 from .utils import API, log
 
@@ -113,7 +111,7 @@ class Adapter(BaseAdapter):
                 try:
                     event = parse_obj_as(
                         event_classes,
-                        pre_handle_webhook_event(payload_data),
+                        payload_data,
                     )
                     bot_id = event.bot_id
                     if (bot := self.bots.get(bot_id, None)) is None:
@@ -300,12 +298,12 @@ class Adapter(BaseAdapter):
     ):
         try:
             login = Login(
-                ws_info.uid,
-                str(bot_config.test_villa_id)
+                uid=ws_info.uid,
+                token=str(bot_config.test_villa_id)
                 + f".{bot.bot_secret_encrypt}.{bot.self_id}",
-                ws_info.platform,
-                ws_info.app_id,
-                ws_info.device_id,
+                platform=ws_info.platform,
+                app_id=ws_info.app_id,
+                device_id=ws_info.device_id,
             )
             log("TRACE", f"Sending Login {escape_tag(repr(login))}")
             await ws.send_bytes(login.to_bytes_package(bot._ws_squence))
@@ -359,7 +357,9 @@ class Adapter(BaseAdapter):
             log("TRACE", f"Heartbeat {timestamp}")
             try:
                 await ws.send_bytes(
-                    HeartBeat(timestamp).to_bytes_package(bot._ws_squence),
+                    HeartBeat(client_timestamp=timestamp).to_bytes_package(
+                        bot._ws_squence,
+                    ),
                 )
                 bot._ws_squence += 1
             except Exception as e:
@@ -390,25 +390,24 @@ class Adapter(BaseAdapter):
         payload = Payload.from_bytes(await ws.receive_bytes())
         if payload.biz_type in {BizType.P_LOGIN, BizType.P_LOGOUT, BizType.P_HEARTBEAT}:
             if payload.biz_type == BizType.P_LOGIN:
-                payload = LoginReply.FromString(payload.body_data)
+                payload = LoginReply.from_proto(payload.body_data)
             elif payload.biz_type == BizType.P_LOGOUT:
-                payload = LogoutReply.FromString(payload.body_data)
+                payload = LogoutReply.from_proto(payload.body_data)
             else:
-                payload = HeartBeatReply.FromString(payload.body_data)
+                payload = HeartBeatReply.from_proto(payload.body_data)
             if payload.code != 0:
                 if isinstance(payload, LogoutReply):
                     log("WARNING", f"Error when logout from server: {payload}")
                     return payload
                 raise ReconnectError(payload)
         elif payload.biz_type == BizType.P_KICK_OFF:
-            payload = KickOff.FromString(payload.body_data)
+            payload = KickOff.from_proto(payload.body_data)
         elif payload.biz_type == BizType.SHUTDOWN:
             payload = Shutdown()
         elif payload.biz_type == BizType.EVENT:
-            event_data = RobotEvent.FromString(payload.body_data)
             return parse_obj_as(
                 event_classes,
-                pre_handle_event_websocket(event_data),
+                proto_to_event_data(payload.body_data),
             )
         else:
             raise ReconnectError

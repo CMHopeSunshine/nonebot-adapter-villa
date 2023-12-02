@@ -1,6 +1,7 @@
 from functools import partial
 import hashlib
 import imghdr
+import re
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -26,6 +27,15 @@ P = ParamSpec("P")
 
 
 log = logger_wrapper("Villa")
+
+
+def pascal_to_snake(string):
+    result = string[0].lower()
+
+    pattern = re.compile(r"(?<!^)(?=[A-Z])")
+    result += pattern.sub("_", string[1:]).lower()
+
+    return result
 
 
 def exclude_none(data: Dict[str, Any]) -> Dict[str, Any]:

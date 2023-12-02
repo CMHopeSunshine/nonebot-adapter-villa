@@ -1,4 +1,3 @@
-from dataclasses import asdict
 from datetime import datetime
 from enum import IntEnum
 import json
@@ -8,12 +7,11 @@ from typing_extensions import Annotated, override
 from nonebot.adapters import Event as BaseEvent
 from nonebot.utils import escape_tag
 
-import betterproto
 from pydantic import Field, root_validator
 
 from .message import Message, MessageSegment
 from .models import MessageContentInfoGet, QuoteMessage, Robot
-from .payload import RobotEvent
+from .utils import pascal_to_snake
 
 
 class EventType(IntEnum):
@@ -52,6 +50,23 @@ class Event(BaseEvent):
     """事件创建时间"""
     send_at: int
     """事件回调时间"""
+
+    @root_validator(pre=True)
+    @classmethod
+    def pre_handle(cls, data: Dict[str, Any]):
+        extend_data = data.pop("extend_data")
+        event_type = data["type"] = EventType(data["type"])
+        event_name = event_type.name
+        event_data = extend_data.pop("EventData", extend_data)
+        if (
+            event_name in event_data
+            or (event_name := pascal_to_snake(event_name)) in event_data
+        ):
+            data.update(event_data[event_name])
+        else:
+            raise ValueError(f"Cannot find event data for event type: {event_name}")
+
+        return data
 
     @property
     def bot_id(self) -> str:
@@ -483,30 +498,6 @@ event_classes = Annotated[
     ],
     Field(discriminator="type"),
 ]
-
-
-def pre_handle_webhook_event(payload: Dict[str, Any]):
-    if (event_type := EventType._value2member_map_.get(payload["type"])) is None:
-        raise ValueError(
-            f"Unknown event type: {payload['type']} data={escape_tag(str(payload))}",
-        )
-    event_name = event_type.name
-    if event_name not in payload["extend_data"]["EventData"]:
-        raise ValueError("Cannot find event data for event type: {event_name}")
-    payload.update(payload["extend_data"]["EventData"][event_name])
-    payload.pop("extend_data")
-    return payload
-
-
-def pre_handle_event_websocket(payload: RobotEvent):
-    event_data = asdict(payload)
-    event_data.update(
-        event_data["extend_data"][
-            betterproto.Casing.SNAKE(EventType(event_data["type"]).name)
-        ],
-    )
-    event_data.pop("extend_data")
-    return event_data
 
 
 __all__ = [

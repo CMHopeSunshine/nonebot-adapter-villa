@@ -9,7 +9,7 @@ from nonebot.exception import (
 )
 
 if TYPE_CHECKING:
-    from betterproto import Message
+    from pydantic import BaseModel
 
     from .api import ApiResponse
 
@@ -24,7 +24,7 @@ class NoLogException(BaseNoLogException, VillaAdapterException):
 
 
 class ReconnectError(VillaAdapterException):
-    def __init__(self, payload: Optional["Message"] = None):
+    def __init__(self, payload: Optional["BaseModel"] = None):
         super().__init__()
         self.payload = payload
 
