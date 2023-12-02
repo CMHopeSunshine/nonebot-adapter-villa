@@ -479,6 +479,7 @@ event_classes = Annotated[
         DeleteRobotEvent,
         AddQuickEmoticonEvent,
         AuditCallbackEvent,
+        ClickMsgComponentEvent,
     ],
     Field(discriminator="type"),
 ]
