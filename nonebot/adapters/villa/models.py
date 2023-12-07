@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import Enum, IntEnum
 import inspect
 import json
@@ -99,20 +100,14 @@ class MemberBasic(BaseModel):
     uid: int
     nickname: str
     introduce: str
-    avatar: str
     avatar_url: str
 
 
 class Member(BaseModel):
     basic: MemberBasic
     role_id_list: List[int]
-    joined_at: int
+    joined_at: datetime
     role_list: List["MemberRole"]
-
-
-class MemberListReturn(BaseModel):
-    list: List[Member]  # noqa: A003
-    next_offset: int
 
 
 # 消息部分
@@ -331,13 +326,16 @@ class MessageContentInfoGet(MessageContentInfo):
 
 # 房间部分
 # see https://webstatic.mihoyo.com/vila/bot/doc/room_api/
-class Room(BaseModel):
+class ListRoom(BaseModel):
     room_id: int
     room_name: str
     room_type: "RoomType"
     group_id: int
-    room_default_notify_type: Optional["RoomDefaultNotifyType"] = None
-    send_msg_auth_range: Optional["SendMsgAuthRange"] = None
+
+
+class Room(ListRoom):
+    room_default_notify_type: "RoomDefaultNotifyType"
+    send_msg_auth_range: "SendMsgAuthRange"
 
 
 class RoomType(str, Enum):
@@ -368,7 +366,7 @@ class SendMsgAuthRange(BaseModel):
 class GroupRoom(BaseModel):
     group_id: int
     group_name: str
-    room_list: List[Room]
+    room_list: List[ListRoom]
 
 
 class ListRoomType(IntEnum):
@@ -402,37 +400,30 @@ class Group(BaseModel):
     group_name: str
 
 
-class RoomSort(BaseModel):
-    room_id: int
-    group_id: int
-
-
 # 身份组部分
 # see https://webstatic.mihoyo.com/vila/bot/doc/role_api/
 class MemberRole(BaseModel):
     id: int
     name: str
-    villa_id: int
     color: str
-    web_color: str
-    permissions: Optional[List["Permission"]] = None
     role_type: "RoleType"
+    villa_id: int
+    member_num: int
+    web_color: str
+    font_color: str
+    bg_color: str
+    has_manage_perm: Optional[bool] = None
+    is_all_room: bool
+    room_ids: List[int]
+    color_scheme_id: int
+    priority: int
+    permissions: Optional[List["Permission"]] = None
 
 
 class PermissionDetail(BaseModel):
     key: str
     name: str
     describe: str
-
-
-class MemberRoleDetail(BaseModel):
-    id: int
-    name: str
-    color: str
-    villa_id: int
-    role_type: "RoleType"
-    member_num: int
-    permissions: Optional[List[PermissionDetail]] = None
 
 
 class RoleType(str, Enum):
@@ -474,6 +465,7 @@ class Color(str, Enum):
     GREEN = "#7ED321"
     BLUE = "#59A1EA"
     PURPLE = "#977EE1"
+    LIGHT_BLUE = "#8F9BBF"  # 此颜色为所有人身份组颜色，无法作为创建和编辑身份组的颜色
 
 
 # 表态表情部分
@@ -570,7 +562,6 @@ __all__ = [
     "Villa",
     "MemberBasic",
     "Member",
-    "MemberListReturn",
     "MentionType",
     "MentionedRobot",
     "MentionedUser",
@@ -608,10 +599,8 @@ __all__ = [
     "CreateRoomType",
     "CreateRoomDefaultNotifyType",
     "Group",
-    "RoomSort",
     "MemberRole",
     "PermissionDetail",
-    "MemberRoleDetail",
     "RoleType",
     "Permission",
     "Color",

@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import hashlib
 import hmac
@@ -6,10 +7,12 @@ from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
+    AsyncIterator,
     Dict,
     List,
     NoReturn,
     Optional,
+    Tuple,
     Union,
     cast,
 )
@@ -69,8 +72,7 @@ from .models import (
     ImageUploadResult,
     Link,
     Member,
-    MemberListReturn,
-    MemberRoleDetail,
+    MemberRole,
     MentionedAll,
     MentionedInfo,
     MentionType,
@@ -80,7 +82,6 @@ from .models import (
     PostMessageContent,
     Robot,
     Room,
-    RoomSort,
     TextEntity,
     TextMessageContent,
     TextStyle,
@@ -623,16 +624,32 @@ class Bot(BaseBot):
         self,
         *,
         villa_id: int,
-        offset: int,
-        size: int,
-    ) -> MemberListReturn:
+        offset_str: str = "",
+        size: int = 10,
+    ) -> Tuple[List[Member], str]:
         request = Request(
             method="GET",
             url=self.adapter.base_url / "getVillaMembers",
             headers=self.get_authorization_header(villa_id),
-            params={"offset": offset, "size": size},
+            params={"offset_str": offset_str, "size": size},
         )
-        return parse_obj_as(MemberListReturn, await self._request(request))
+        result = await self._request(request)
+        return parse_obj_as(List[Member], result["list"]), result["next_offset_str"]
+
+    def iter_villa_members(
+        self,
+        villa_id: int,
+        offset_str: str = "",
+        size: int = 10,
+        interval: float = 0.3,
+    ) -> AsyncIterator[List[Member]]:
+        return VillaMemberIterator(
+            bot=self,
+            villa_id=villa_id,
+            offset_str=offset_str,
+            size=size,
+            interval=interval,
+        )
 
     @API
     async def delete_villa_member(
@@ -790,21 +807,6 @@ class Bot(BaseBot):
         return parse_obj_as(List[Group], (await self._request(request))["list"])
 
     @API
-    async def sort_group_list(
-        self,
-        *,
-        villa_id: int,
-        group_ids: List[int],
-    ) -> None:
-        request = Request(
-            method="POST",
-            url=self.adapter.base_url / "sortGroupList",
-            headers=self.get_authorization_header(villa_id),
-            json={"villa_id": villa_id, "group_ids": group_ids},
-        )
-        await self._request(request)
-
-    @API
     async def edit_room(
         self,
         *,
@@ -865,24 +867,6 @@ class Bot(BaseBot):
             List[GroupRoom],
             (await self._request(request))["list"],
         )
-
-    @API
-    async def sort_room_list(
-        self,
-        *,
-        villa_id: int,
-        room_list: List[RoomSort],
-    ) -> None:
-        request = Request(
-            method="POST",
-            url=self.adapter.base_url / "sortRoomList",
-            headers=self.get_authorization_header(villa_id),
-            json={
-                "villa_id": villa_id,
-                "room_list": [room.dict() for room in room_list],
-            },
-        )
-        await self._request(request)
 
     @API
     async def operate_member_to_role(
@@ -962,7 +946,7 @@ class Bot(BaseBot):
         *,
         villa_id: int,
         role_id: int,
-    ) -> MemberRoleDetail:
+    ) -> MemberRole:
         request = Request(
             method="GET",
             url=self.adapter.base_url / "getMemberRoleInfo",
@@ -970,7 +954,7 @@ class Bot(BaseBot):
             params={"role_id": role_id},
         )
         return parse_obj_as(
-            MemberRoleDetail,
+            MemberRole,
             (await self._request(request))["role"],
         )
 
@@ -979,14 +963,14 @@ class Bot(BaseBot):
         self,
         *,
         villa_id: int,
-    ) -> List[MemberRoleDetail]:
+    ) -> List[MemberRole]:
         request = Request(
             method="GET",
             url=self.adapter.base_url / "getVillaMemberRoles",
             headers=self.get_authorization_header(villa_id),
         )
         return parse_obj_as(
-            List[MemberRoleDetail],
+            List[MemberRole],
             (await self._request(request))["list"],
         )
 
@@ -1008,7 +992,7 @@ class Bot(BaseBot):
         pass_through: str,
         room_id: int,
         uid: int,
-        content_type: ContentType,
+        content_type: ContentType = ContentType.TEXT,
     ) -> str:
         request = Request(
             method="POST",
@@ -1144,3 +1128,34 @@ def _parse_components(components: List[Component]) -> Optional[Panel]:
             big_component_group_list=big_total,
         )
     return None
+
+
+class VillaMemberIterator:
+    def __init__(
+        self,
+        bot: Bot,
+        villa_id: int,
+        offset_str: str = "",
+        size: int = 10,
+        interval: float = 0.3,
+    ) -> None:
+        self.bot = bot
+        self.villa_id = villa_id
+        self.offset_str = offset_str
+        self.size = size
+        self.interval = interval
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self) -> List[Member]:
+        result, offset_str = await self.bot.get_villa_members(
+            villa_id=self.villa_id,
+            offset_str=self.offset_str,
+            size=self.size,
+        )
+        if not result:
+            raise StopAsyncIteration
+        self.offset_str = offset_str
+        await asyncio.sleep(self.interval)
+        return result

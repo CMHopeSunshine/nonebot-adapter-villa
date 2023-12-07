@@ -111,16 +111,6 @@ class NoticeEvent(Event):
         return "notice"
 
 
-class MessageEvent(Event):
-    """消息事件
-
-    但目前大别野只有SendMessageEvent这一种消息事件，所以推荐直接使用SendMessageEvent"""
-
-    @override
-    def get_type(self) -> str:
-        return "message"
-
-
 class JoinVillaEvent(NoticeEvent):
     """新用户加入大别野事件
 
@@ -154,7 +144,7 @@ class JoinVillaEvent(NoticeEvent):
         return f"{self.villa_id}_{self.join_uid}"
 
 
-class SendMessageEvent(MessageEvent):
+class SendMessageEvent(Event):
     """用户@机器人发送消息事件
 
     see https://webstatic.mihoyo.com/vila/bot/doc/callback.html###SendMessage"""
@@ -187,6 +177,10 @@ class SendMessageEvent(MessageEvent):
     """事件消息"""
     original_message: Message
     """事件原始消息"""
+
+    @override
+    def get_type(self) -> str:
+        return "message"
 
     @property
     def message_id(self) -> str:
@@ -320,6 +314,9 @@ class SendMessageEvent(MessageEvent):
             msg.append(MessageSegment.text(last_text))
         data["message"] = data["original_message"] = msg
         return data
+
+
+MessageEvent = SendMessageEvent
 
 
 class CreateRobotEvent(NoticeEvent):
