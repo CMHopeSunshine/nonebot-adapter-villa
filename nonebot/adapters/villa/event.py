@@ -477,7 +477,7 @@ class ClickMsgComponentEvent(NoticeEvent):
     """如果被回复的消息从属于机器人，则该字段不为空字符串"""
     component_id: str
     """机器人自定义的组件id"""
-    template_id: int
+    template_id: Optional[int] = None
     """如果该组件模板为已创建模板，则template_id不为0"""
     extra: str
     """机器人自定义透传信息"""
