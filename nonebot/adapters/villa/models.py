@@ -408,7 +408,7 @@ class MemberRole(BaseModel):
     color: str
     role_type: "RoleType"
     villa_id: int
-    member_num: int
+    member_num: Optional[int] = None
     web_color: str
     font_color: str
     bg_color: str
