@@ -41,14 +41,14 @@ class MessageSegment(BaseMessageSegment["Message"]):
         self,
         other: Union[str, "MessageSegment", Iterable["MessageSegment"]],
     ) -> "Message":
-        return super().__add__(other)
+        return self.get_message_class()(self) + other
 
     @override
     def __radd__(
         self,
         other: Union[str, "MessageSegment", Iterable["MessageSegment"]],
     ) -> "Message":
-        return super().__radd__(other)
+        return self.get_message_class()(self) + other
 
     @override
     def is_text(self) -> bool:

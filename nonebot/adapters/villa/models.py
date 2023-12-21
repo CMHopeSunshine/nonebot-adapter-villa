@@ -59,12 +59,13 @@ class Robot(BaseModel):
 class QuoteMessage(BaseModel):
     content: str
     msg_uid: str
-    bot_msg_id: Optional[str]
+    bot_msg_id: Optional[str] = None
     send_at: int
     msg_type: str
-    from_user_id: int
-    from_user_nickname: str
+    from_user_id: Optional[int] = None
+    from_user_nickname: Optional[str] = None
     from_user_id_str: str
+    images: Optional[List[str]] = None
 
 
 ## 鉴权部分

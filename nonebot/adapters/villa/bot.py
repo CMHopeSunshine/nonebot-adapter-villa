@@ -96,19 +96,6 @@ if TYPE_CHECKING:
     from .adapter import Adapter
 
 
-def _check_reply(bot: "Bot", event: SendMessageEvent):
-    """检查事件是否有引用消息，如果有则删除。
-
-    参数:
-        bot: Bot对象
-        event: 事件
-    """
-    if event.content.quote is not None:
-        event.message = event.message.exclude("quote")
-    if not event.message:
-        event.message.append(MessageSegment.text(""))
-
-
 def _check_at_me(bot: "Bot", event: SendMessageEvent):
     """检查事件是否和机器人有关，如果有关则设置 to_me 为 True，并删除消息中的 at 信息。
 
@@ -251,7 +238,6 @@ class Bot(BaseBot):
         """处理事件"""
         if isinstance(event, SendMessageEvent):
             _check_at_me(self, event)
-            _check_reply(self, event)
         await handle_event(self, event)
 
     def _verify_signature(

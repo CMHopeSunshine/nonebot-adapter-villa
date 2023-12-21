@@ -230,13 +230,13 @@ class SendMessageEvent(Event):
             return data
         msg = Message()
         msg_content_info = data["content"] = json.loads(data["content"])
-        if quote := msg_content_info.get("quote"):
-            msg.append(
-                MessageSegment.quote(
-                    message_id=quote["quoted_message_id"],
-                    message_send_time=quote["quoted_message_send_time"],
-                ),
-            )
+        # if quote := msg_content_info.get("quote"):
+        #     msg.append(
+        #         MessageSegment.quote(
+        #             message_id=quote["quoted_message_id"],
+        #             message_send_time=quote["quoted_message_send_time"],
+        #         ),
+        #     )
 
         content = msg_content_info["content"]
         text = content["text"]
