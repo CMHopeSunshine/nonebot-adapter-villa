@@ -15,7 +15,7 @@ from .compat import field_validator
 
 class ApiResponse(BaseModel):
     retcode: int
-    message: str = Field(alias="msg")
+    message: str = Field(default="", alias="msg")
     data: Any
 
     if PYDANTIC_V2:
