@@ -6,6 +6,7 @@ from nonebot.adapters import (
     Message as BaseMessage,
     MessageSegment as BaseMessageSegment,
 )
+from nonebot.compat import type_validate_python
 
 from .models import (
     Badge,
@@ -240,7 +241,8 @@ class MessageSegment(BaseMessageSegment["Message"]):
         return ImageSegment(
             "image",
             {
-                "image": Image.parse_obj(
+                "image": type_validate_python(
+                    Image,
                     {
                         "url": url,
                         "size": {

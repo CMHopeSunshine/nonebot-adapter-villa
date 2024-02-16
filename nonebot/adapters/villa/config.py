@@ -1,6 +1,6 @@
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel, Extra, Field
+from pydantic import BaseModel, Field
 
 
 class BotInfo(BaseModel):
@@ -13,5 +13,5 @@ class BotInfo(BaseModel):
     verify_event: bool = True
 
 
-class Config(BaseModel, extra=Extra.ignore):
+class Config(BaseModel):
     villa_bots: List[BotInfo] = Field(default_factory=list)

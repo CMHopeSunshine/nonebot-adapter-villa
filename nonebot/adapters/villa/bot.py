@@ -20,11 +20,11 @@ from typing_extensions import override
 from urllib.parse import urlencode
 
 from nonebot.adapters import Bot as BaseBot
+from nonebot.compat import type_validate_python
 from nonebot.drivers import Request, Response
 from nonebot.message import handle_event
 from nonebot.utils import escape_tag
 
-from pydantic import parse_obj_as
 import rsa
 
 from .config import BotInfo
@@ -576,7 +576,7 @@ class Bot(BaseBot):
             ),
             json={"token": token},
         )
-        return parse_obj_as(
+        return type_validate_python(
             CheckMemberBotAccessTokenReturn,
             await self._request(request),
         )
@@ -588,7 +588,7 @@ class Bot(BaseBot):
             url=self.adapter.base_url / "getVilla",
             headers=self.get_authorization_header(villa_id),
         )
-        return parse_obj_as(Villa, (await self._request(request))["villa"])
+        return type_validate_python(Villa, (await self._request(request))["villa"])
 
     @API
     async def get_member(
@@ -603,7 +603,7 @@ class Bot(BaseBot):
             headers=self.get_authorization_header(villa_id),
             params={"uid": uid},
         )
-        return parse_obj_as(Member, (await self._request(request))["member"])
+        return type_validate_python(Member, (await self._request(request))["member"])
 
     @API
     async def get_villa_members(
@@ -620,7 +620,10 @@ class Bot(BaseBot):
             params={"offset_str": offset_str, "size": size},
         )
         result = await self._request(request)
-        return parse_obj_as(List[Member], result["list"]), result["next_offset_str"]
+        return (
+            type_validate_python(List[Member], result["list"]),
+            result["next_offset_str"],
+        )
 
     def iter_villa_members(
         self,
@@ -790,7 +793,7 @@ class Bot(BaseBot):
             url=self.adapter.base_url / "getGroupList",
             headers=self.get_authorization_header(villa_id),
         )
-        return parse_obj_as(List[Group], (await self._request(request))["list"])
+        return type_validate_python(List[Group], (await self._request(request))["list"])
 
     @API
     async def edit_room(
@@ -836,7 +839,7 @@ class Bot(BaseBot):
             headers=self.get_authorization_header(villa_id),
             params={"room_id": room_id},
         )
-        return parse_obj_as(Room, (await self._request(request))["room"])
+        return type_validate_python(Room, (await self._request(request))["room"])
 
     @API
     async def get_villa_group_room_list(
@@ -849,7 +852,7 @@ class Bot(BaseBot):
             url=self.adapter.base_url / "getVillaGroupRoomList",
             headers=self.get_authorization_header(villa_id),
         )
-        return parse_obj_as(
+        return type_validate_python(
             List[GroupRoom],
             (await self._request(request))["list"],
         )
@@ -939,7 +942,7 @@ class Bot(BaseBot):
             headers=self.get_authorization_header(villa_id),
             params={"role_id": role_id},
         )
-        return parse_obj_as(
+        return type_validate_python(
             MemberRole,
             (await self._request(request))["role"],
         )
@@ -955,7 +958,7 @@ class Bot(BaseBot):
             url=self.adapter.base_url / "getVillaMemberRoles",
             headers=self.get_authorization_header(villa_id),
         )
-        return parse_obj_as(
+        return type_validate_python(
             List[MemberRole],
             (await self._request(request))["list"],
         )
@@ -967,7 +970,10 @@ class Bot(BaseBot):
             url=self.adapter.base_url / "getAllEmoticons",
             headers=self.get_authorization_header(),
         )
-        return parse_obj_as(List[Emoticon], (await self._request(request))["list"])
+        return type_validate_python(
+            List[Emoticon],
+            (await self._request(request))["list"],
+        )
 
     @API
     async def audit(
@@ -1027,7 +1033,10 @@ class Bot(BaseBot):
                 "ext": ext,
             },
         )
-        return parse_obj_as(UploadImageParamsReturn, await self._request(request))
+        return type_validate_python(
+            UploadImageParamsReturn,
+            await self._request(request),
+        )
 
     async def upload_image(
         self,
@@ -1067,7 +1076,7 @@ class Bot(BaseBot):
             data=upload_params.params.to_upload_data(),
             files={"file": image},
         )
-        return parse_obj_as(ImageUploadResult, await self._request(request))
+        return type_validate_python(ImageUploadResult, await self._request(request))
 
     async def get_websocket_info(
         self,
@@ -1077,7 +1086,7 @@ class Bot(BaseBot):
             url=self.adapter.base_url / "getWebsocketInfo",
             headers=self.get_authorization_header(),
         )
-        return parse_obj_as(WebsocketInfo, await self._request(request))
+        return type_validate_python(WebsocketInfo, await self._request(request))
 
 
 def _parse_components(components: List[Component]) -> Optional[Panel]:

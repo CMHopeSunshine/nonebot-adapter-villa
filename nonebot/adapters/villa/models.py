@@ -6,17 +6,24 @@ import sys
 from typing import Any, Dict, List, Literal, Optional, Union
 from typing_extensions import TypeAlias
 
-from pydantic import BaseModel, Field, validator
+from nonebot.compat import PYDANTIC_V2, ConfigDict
+
+from pydantic import BaseModel, Field
+
+from .compat import field_validator
 
 
 class ApiResponse(BaseModel):
     retcode: int
-    message: str = ""
+    message: str = Field(alias="msg")
     data: Any
 
-    class Config:
-        allow_population_by_field_name = True
-        fields = {"message": {"alias": "msg"}}
+    if PYDANTIC_V2:
+        model_config = ConfigDict(populate_by_name=True)
+    else:
+
+        class Config:
+            allow_population_by_field_name = True
 
 
 class BotAuth(BaseModel):
@@ -205,7 +212,7 @@ class Badge(BaseModel):
 class PostMessageContent(BaseModel):
     post_id: str
 
-    @validator("post_id")
+    @field_validator("post_id")
     @classmethod
     def __deal_post_id(cls, v: str):
         s = v.split("/")[-1]
@@ -245,7 +252,7 @@ class User(BaseModel):
     id: str
     portrait: str
 
-    @validator("extra", pre=True)
+    @field_validator("extra", mode="before")
     @classmethod
     def extra_str_to_dict(cls, v: Any):
         if isinstance(v, str):

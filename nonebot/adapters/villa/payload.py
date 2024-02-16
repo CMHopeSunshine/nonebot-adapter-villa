@@ -2,6 +2,8 @@ from enum import IntEnum
 import struct
 from typing import Literal
 
+from nonebot.compat import type_validate_python
+
 from google.protobuf.json_format import MessageToDict, Parse
 from pydantic import BaseModel
 
@@ -108,7 +110,8 @@ class HeartBeatReply(BaseModel):
 
     @classmethod
     def from_proto(cls, content: bytes) -> "HeartBeatReply":
-        return cls.parse_obj(
+        return type_validate_python(
+            cls,
             MessageToDict(
                 PHeartBeatReply().FromString(content),
                 preserving_proto_field_name=True,
@@ -157,7 +160,8 @@ class LoginReply(BaseModel):
 
     @classmethod
     def from_proto(cls, content: bytes) -> "LoginReply":
-        return cls.parse_obj(
+        return type_validate_python(
+            cls,
             MessageToDict(
                 PLoginReply().FromString(content),
                 preserving_proto_field_name=True,
@@ -201,7 +205,8 @@ class LogoutReply(BaseModel):
 
     @classmethod
     def from_proto(cls, content: bytes) -> "LogoutReply":
-        return cls.parse_obj(
+        return type_validate_python(
+            cls,
             MessageToDict(
                 PLogoutReply().FromString(content),
                 preserving_proto_field_name=True,
@@ -220,7 +225,8 @@ class KickOff(BaseModel):
 
     @classmethod
     def from_proto(cls, content: bytes) -> "KickOff":
-        return cls.parse_obj(
+        return type_validate_python(
+            cls,
             MessageToDict(
                 PKickOff().FromString(content),
                 preserving_proto_field_name=True,

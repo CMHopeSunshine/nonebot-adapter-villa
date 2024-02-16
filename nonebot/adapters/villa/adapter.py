@@ -4,7 +4,9 @@ import time
 from typing import Any, Dict, List, Literal, Optional, cast
 from typing_extensions import override
 
+from nonebot import get_plugin_config
 from nonebot.adapters import Adapter as BaseAdapter
+from nonebot.compat import type_validate_python
 from nonebot.drivers import (
     URL,
     Driver,
@@ -18,8 +20,6 @@ from nonebot.drivers import (
 )
 from nonebot.exception import WebSocketClosed
 from nonebot.utils import escape_tag
-
-from pydantic import parse_obj_as
 
 from .bot import Bot
 from .config import BotInfo, Config
@@ -51,7 +51,7 @@ class Adapter(BaseAdapter):
     @override
     def __init__(self, driver: Driver, **kwargs: Any):
         super().__init__(driver, **kwargs)
-        self.villa_config: Config = Config(**self.config.dict())
+        self.villa_config: Config = get_plugin_config(Config)
         self.tasks: List[asyncio.Task] = []
         self.ws: Dict[str, WebSocket] = {}
         self.base_url: URL = URL("https://bbs-api.miyoushe.com/vila/api/bot/platform")
@@ -109,10 +109,7 @@ class Adapter(BaseAdapter):
             json_data = json.loads(data)
             if payload_data := json_data.get("event"):
                 try:
-                    event = parse_obj_as(
-                        event_classes,
-                        payload_data,
-                    )
+                    event = type_validate_python(event_classes, payload_data)  # type: ignore
                     bot_id = event.bot_id
                     if (bot := self.bots.get(bot_id, None)) is None:
                         if (
@@ -405,8 +402,8 @@ class Adapter(BaseAdapter):
         elif payload.biz_type == BizType.SHUTDOWN:
             payload = Shutdown()
         elif payload.biz_type == BizType.EVENT:
-            return parse_obj_as(
-                event_classes,
+            return type_validate_python(
+                event_classes,  # type: ignore
                 proto_to_event_data(payload.body_data),
             )
         else:

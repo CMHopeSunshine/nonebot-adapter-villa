@@ -5,10 +5,12 @@ from typing import Any, Dict, Literal, Optional, Union
 from typing_extensions import Annotated, override
 
 from nonebot.adapters import Event as BaseEvent
+from nonebot.compat import model_dump
 from nonebot.utils import escape_tag
 
-from pydantic import Field, root_validator
+from pydantic import Field
 
+from .compat import model_validator
 from .message import Message, MessageSegment
 from .models import MessageContentInfoGet, QuoteMessage, Robot
 from .utils import pascal_to_snake
@@ -51,7 +53,7 @@ class Event(BaseEvent):
     send_at: int
     """事件回调时间"""
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
     @classmethod
     def pre_handle(cls, data: Dict[str, Any]):
         extend_data = data.pop("extend_data")
@@ -84,7 +86,7 @@ class Event(BaseEvent):
 
     @override
     def get_event_description(self) -> str:
-        return escape_tag(repr(self.dict()))
+        return escape_tag(repr(model_dump(self)))
 
     @override
     def get_message(self):
@@ -223,7 +225,7 @@ class SendMessageEvent(Event):
         """获取会话ID"""
         return f"{self.villa_id}_{self.room_id}_{self.from_user_id}"
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
     @classmethod
     def payload_to_event(cls, data: Dict[str, Any]):
         if not data.get("content"):
